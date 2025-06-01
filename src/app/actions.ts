@@ -11,6 +11,7 @@ export const signUpAction = async (formData: FormData) => {
   const supabase = await createClient();
   const origin = (await headers()).get("origin");
 
+  /* 입력값 검증 */
   if (!email || !password) {
     return encodedRedirect(
       "error",
@@ -18,12 +19,16 @@ export const signUpAction = async (formData: FormData) => {
       "Email and password are required"
     );
   }
-
+  /* 
+    이메일 인증 주체
+    emailRedirectTo는 이메일 인증에 성공했을 때 redirect 할 주소 (api면 호출됨)
+    /auth/callback은 이메일 인증 코드를 사용자 세션으로 교환 후 지정된 URL로 다시 리다이렉트
+  */
   const { error } = await supabase.auth.signUp({
     email,
     password,
     options: {
-      emailRedirectTo: `${origin}/auth/callback`,
+      emailRedirectTo: `${origin}/api/auth/callback`,
     },
   });
 
@@ -67,7 +72,7 @@ export const forgotPasswordAction = async (formData: FormData) => {
   }
 
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${origin}/auth/callback?redirect_to=/protected/reset-password`,
+    redirectTo: `${origin}/api/auth/callback?redirect_to=/protected/reset-password`,
   });
 
   if (error) {

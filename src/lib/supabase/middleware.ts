@@ -38,7 +38,6 @@ export const updateSession = async (request: NextRequest) => {
     // 세션이 만료된 경우 새로고침합니다 - Server Components에 필수
     // https://supabase.com/docs/guides/auth/server-side/nextjs
     const user = await supabase.auth.getUser();
-    console.log("하이킥 user", user);
 
     // 보호된 라우트
     if (request.nextUrl.pathname.startsWith("/protected") && user.error) {
