@@ -1,14 +1,21 @@
+import { isGuestOnlyRoutes, isProtectedRoutes } from "@/lib/routerGuard";
+import { andPipe, orPipe } from "@/lib/utils";
 import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
 
-export const updateSession = async (request: NextRequest) => {
-  // 이 `try/catch` 블록은 대화형 튜토리얼을 위한 것입니다.
-  // Supabase 연결이 완료되면 자유롭게 제거하셔도 됩니다.
+/**
+ * Supabase 세션을 업데이트하고 라우터 가드를 수행하는 미들웨어 함수
+ * @param request - Next.js 요청 객체
+ * @returns NextResponse - 리다이렉트 또는 정상 진행 응답
+ */ export const updateSession = async (request: NextRequest) => {
   try {
-    // 수정되지 않은 응답 생성
+    let requestHeaders = request.headers;
+    requestHeaders = new Headers(request.headers);
+    requestHeaders.set("Lang", "kr");
+
     let response = NextResponse.next({
       request: {
-        headers: request.headers,
+        headers: requestHeaders,
       },
     });
 
@@ -21,12 +28,20 @@ export const updateSession = async (request: NextRequest) => {
             return request.cookies.getAll();
           },
           setAll(cookiesToSet) {
+            // 1단계: 요청 객체에 새로운 쿠키들을 설정
             cookiesToSet.forEach(({ name, value }) =>
               request.cookies.set(name, value)
             );
+
+            // 2단계: 업데이트된 요청으로 새로운 응답 객체 생성
             response = NextResponse.next({
-              request,
+              request: {
+                ...request,
+                headers: requestHeaders,
+              },
             });
+
+            // 3단계: 응답 객체에도 쿠키들을 설정
             cookiesToSet.forEach(({ name, value, options }) =>
               response.cookies.set(name, value, options)
             );
@@ -35,27 +50,37 @@ export const updateSession = async (request: NextRequest) => {
       }
     );
 
-    // 세션이 만료된 경우 새로고침합니다 - Server Components에 필수
-    // https://supabase.com/docs/guides/auth/server-side/nextjs
-    const user = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error,
+    } = await supabase.auth.getUser();
 
-    // 보호된 라우트
-    if (request.nextUrl.pathname.startsWith("/protected") && user.error) {
+    const isLoggedIn = andPipe(!error, user);
+    const isNotLoggedIn = orPipe(error, !user);
+    const pathName = request.nextUrl.pathname;
+
+    if (andPipe(isProtectedRoutes(pathName), isNotLoggedIn)) {
       return NextResponse.redirect(new URL("/sign-in", request.url));
     }
 
-    if (request.nextUrl.pathname === "/" && !user.error) {
+    if (andPipe(isGuestOnlyRoutes(pathName), isLoggedIn)) {
       return NextResponse.redirect(new URL("/protected", request.url));
     }
 
     return response;
   } catch (e) {
-    // 여기에 도달했다면 Supabase 클라이언트를 생성할 수 없습니다!
-    // 환경 변수가 설정되지 않았을 가능성이 높습니다.
-    // Next Steps는 http://localhost:3000 에서 확인하세요.
+    // API 요청인 경우 예외 상황에서도 Lang 헤더 추가
+    const isApiRoute = request.nextUrl.pathname.startsWith("/api/");
+    let requestHeaders = request.headers;
+
+    if (isApiRoute) {
+      requestHeaders = new Headers(request.headers);
+      requestHeaders.set("Lang", "kr");
+    }
+
     return NextResponse.next({
       request: {
-        headers: request.headers,
+        headers: requestHeaders,
       },
     });
   }

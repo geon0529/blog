@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 // GET /api/notes - 노트 목록 조회 (검색, 필터링, 페이지네이션)
 export async function GET(request: NextRequest) {
   try {
+    console.log("Lang 헤더:", request.headers.get("Lang")); // "kr" 출력
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search") || "";
     const page = parseInt(searchParams.get("page") || "1");
