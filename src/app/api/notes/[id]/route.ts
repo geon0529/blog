@@ -1,135 +1,115 @@
-import { createClient } from "@/lib/supabase/server";
+// src/app/api/notes/[id]/route.ts
 import { NextRequest, NextResponse } from "next/server";
+import { getNoteById, updateNote, deleteNote } from "@/lib/db/queries";
+import { updateNoteSchema, noteIdSchema } from "@/lib/db/schema";
+import { z } from "zod";
 
-// GET /api/notes/[id] - 특정 노트 조회
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const id = parseInt(params.id);
+    // UUID 유효성 검사
+    const { id } = noteIdSchema.parse({ id: params.id });
 
-    if (isNaN(id)) {
-      return NextResponse.json({ error: "Invalid note ID" }, { status: 400 });
+    const note = await getNoteById(id);
+    if (!note) {
+      return NextResponse.json({ error: "Note not found" }, { status: 404 });
     }
 
-    const supabase = await createClient();
-
-    const { data: note, error } = await supabase
-      .from("notes")
-      .select("*")
-      .eq("id", id)
-      .single();
-
-    if (error) {
-      if (error.code === "PGRST116") {
-        return NextResponse.json({ error: "Note not found" }, { status: 404 });
-      }
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-
-    return NextResponse.json({ note });
+    return NextResponse.json(note);
   } catch (error) {
-    console.error(`GET /api/notes/${params.id} error:`, error);
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: "Invalid UUID format" },
+        { status: 400 }
+      );
+    }
+
+    console.error("Error fetching note:", error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: "Failed to fetch note" },
       { status: 500 }
     );
   }
 }
 
-// PUT /api/notes/[id] - 노트 수정
 export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const id = parseInt(params.id);
+    // UUID 유효성 검사
+    const { id } = noteIdSchema.parse({ id: params.id });
 
-    if (isNaN(id)) {
-      return NextResponse.json({ error: "Invalid note ID" }, { status: 400 });
-    }
-
+    // 요청 본문 검증
     const body = await request.json();
-    const { title, content } = body;
+    const validatedData = updateNoteSchema.parse(body);
 
-    // 입력 검증
-    if (!title || !content) {
+    // 빈 객체인 경우 체크
+    if (Object.keys(validatedData).length === 0) {
       return NextResponse.json(
-        { error: "Title and content are required" },
+        { error: "At least one field must be provided for update" },
         { status: 400 }
       );
     }
 
-    if (title.length > 200) {
-      return NextResponse.json(
-        { error: "Title must be less than 200 characters" },
-        { status: 400 }
-      );
+    const note = await updateNote(id, validatedData);
+    if (!note) {
+      return NextResponse.json({ error: "Note not found" }, { status: 404 });
     }
 
-    if (content.length > 10000) {
-      return NextResponse.json(
-        { error: "Content must be less than 10,000 characters" },
-        { status: 400 }
-      );
-    }
-
-    const supabase = await createClient();
-
-    const { data: note, error } = await supabase
-      .from("notes")
-      .update({
-        title: title.trim(),
-        content: content.trim(),
-        updatedAt: new Date().toISOString(),
-      })
-      .eq("id", id)
-      .select()
-      .single();
-
-    if (error) {
-      if (error.code === "PGRST116") {
-        return NextResponse.json({ error: "Note not found" }, { status: 404 });
-      }
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-
-    return NextResponse.json({ note });
+    return NextResponse.json(note);
   } catch (error) {
-    console.error(`PUT /api/notes/${params.id} error:`, error);
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        {
+          error: "Validation failed",
+          details: error.errors.map((err) => ({
+            field: err.path.join("."),
+            message: err.message,
+          })),
+        },
+        { status: 400 }
+      );
+    }
+
+    console.error("Error updating note:", error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: "Failed to update note" },
       { status: 500 }
     );
   }
 }
 
-// DELETE /api/notes/[id] - 노트 삭제
 export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const id = parseInt(params.id);
+    // UUID 유효성 검사
+    const { id } = noteIdSchema.parse({ id: params.id });
 
-    if (isNaN(id)) {
-      return NextResponse.json({ error: "Invalid note ID" }, { status: 400 });
+    const success = await deleteNote(id);
+    if (!success) {
+      return NextResponse.json({ error: "Note not found" }, { status: 404 });
     }
 
-    const supabase = await createClient();
-
-    const { error } = await supabase.from("notes").delete().eq("id", id);
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-
-    return NextResponse.json({ message: "Note deleted successfully" });
+    return NextResponse.json({
+      success: true,
+      message: "Note deleted successfully",
+    });
   } catch (error) {
-    console.error(`DELETE /api/notes/${params.id} error:`, error);
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: "Invalid UUID format" },
+        { status: 400 }
+      );
+    }
+
+    console.error("Error deleting note:", error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: "Failed to delete note" },
       { status: 500 }
     );
   }
