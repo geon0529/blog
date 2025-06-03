@@ -1,63 +1,100 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Laptop, Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
+import { motion } from "motion/react";
+import useIsMounted from "@/hooks/useIsMounted";
 
 export default function ThemeSwitcher() {
   const { theme, setTheme } = useTheme();
+  const { isMounted } = useIsMounted();
   const ICON_SIZE = 16;
+
+  const onClickTheme = () => {
+    switch (theme) {
+      case "light": {
+        setTheme("dark");
+        break;
+      }
+      case "dark": {
+        setTheme("system");
+        break;
+      }
+      case "system": {
+        setTheme("light");
+        break;
+      }
+    }
+  };
+
+  if (!isMounted) {
+    return (
+      <Button variant="ghost" size={"sm"}>
+        <motion.div
+          key="light"
+          initial={{
+            rotate: 180,
+          }}
+          animate={{ rotate: 0 }}
+        >
+          <Sun
+            key="light"
+            size={ICON_SIZE}
+            className={"text-muted-foreground"}
+          />
+        </motion.div>
+      </Button>
+    );
+  }
+
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size={"sm"}>
-          {theme === "light" ? (
+    <>
+      <Button variant="ghost" size={"sm"} onClick={onClickTheme}>
+        {theme === "light" ? (
+          <motion.div
+            key="light"
+            initial={{
+              rotate: 180,
+            }}
+            animate={{ rotate: 0 }}
+          >
             <Sun
               key="light"
               size={ICON_SIZE}
               className={"text-muted-foreground"}
             />
-          ) : theme === "dark" ? (
+          </motion.div>
+        ) : theme === "dark" ? (
+          <motion.div
+            key="dark"
+            initial={{
+              rotate: 180,
+            }}
+            animate={{ rotate: 0 }}
+          >
             <Moon
               key="dark"
               size={ICON_SIZE}
               className={"text-muted-foreground"}
             />
-          ) : (
+          </motion.div>
+        ) : (
+          <motion.div
+            key="system"
+            initial={{
+              rotate: 180,
+            }}
+            animate={{ rotate: 0 }}
+          >
             <Laptop
               key="system"
               size={ICON_SIZE}
               className={"text-muted-foreground"}
             />
-          )}
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-content" align="start">
-        <DropdownMenuRadioGroup
-          value={theme}
-          onValueChange={(e) => setTheme(e)}
-        >
-          <DropdownMenuRadioItem className="flex gap-2" value="light">
-            <Sun size={ICON_SIZE} className="text-muted-foreground" />
-            <span>Light</span>
-          </DropdownMenuRadioItem>
-          <DropdownMenuRadioItem className="flex gap-2" value="dark">
-            <Moon size={ICON_SIZE} className="text-muted-foreground" />
-            <span>Dark</span>
-          </DropdownMenuRadioItem>
-          <DropdownMenuRadioItem className="flex gap-2" value="system">
-            <Laptop size={ICON_SIZE} className="text-muted-foreground" />
-            <span>System</span>
-          </DropdownMenuRadioItem>
-        </DropdownMenuRadioGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
+          </motion.div>
+        )}
+      </Button>
+    </>
   );
 }

@@ -1,8 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { expect, userEvent, within } from "@storybook/test";
 import { ThemeProvider } from "next-themes";
-import { ThemeSwitcher } from "../components/theme-switcher";
 import clsx from "clsx";
+import ThemeSwitcher from "@/components/theme-switcher";
 
 const meta = {
   title: "UI/ThemeSwitcher",

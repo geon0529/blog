@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useTransition } from "react";
+import React, { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -25,6 +25,7 @@ import {
 } from "@/actions/note.actions";
 import { Note } from "@/lib/db/schema";
 import { PaginationInfo } from "@/types/common.type";
+import ConfirmDialog from "@/components/dialogs/confirm-dialog";
 
 interface NotesResponse {
   notes: Note[];
@@ -54,19 +55,12 @@ export default function NotesTable({
 
   const ITEMS_PER_PAGE = 10;
 
-  const handleDelete = async (id: string, title: string) => {
-    if (!confirm(`"${title}" 노트를 정말 삭제하시겠습니까?`)) {
-      return;
-    }
-
+  const handleDelete = async (id: string) => {
     setDeleting(id);
     setError(null);
-
     try {
       startTransition(async () => {
         await deleteNote(id);
-
-        // 삭제 후 페이지 조정
         const shouldGoToPreviousPage =
           noteData.notes.length === 1 && currentPage > 1;
 
@@ -118,11 +112,9 @@ export default function NotesTable({
   // 수동 캐시 새로고침 - useTransition 활용
   const handleRefresh = () => {
     setError(null);
-
     startTransition(async () => {
       try {
         await revalidateNotesCache();
-        router.refresh();
       } catch (err) {
         setError("새로고침에 실패했습니다.");
       }
@@ -193,7 +185,7 @@ export default function NotesTable({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="w-full space-y-6">
       {/* 상단 액션 바 */}
       <div className="flex justify-between items-center">
         <div className="flex gap-2">
@@ -240,21 +232,27 @@ export default function NotesTable({
 
       {/* shadcn Table */}
       <div
-        className={`border rounded-lg transition-opacity ${isPending ? "opacity-60" : "opacity-100"}`}
+        className={`w-full border rounded-lg transition-opacity ${isPending ? "opacity-60" : "opacity-100"}`}
       >
         <Table>
-          <TableCaption>
-            {`${noteData.pagination.currentPage}페이지 / ${noteData.pagination.totalPages}페이지`}
+          <TableCaption className="w-full m-0">
+            <Paginator
+              pagination={noteData.pagination}
+              currentPage={currentPage}
+              onPageChange={handlePageChange}
+              disabled={isPending}
+              className="mt-4 mb-4"
+            />
           </TableCaption>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-20">ID</TableHead>
-              <TableHead className="w-20">제목</TableHead>
-              <TableHead className="w-96">내용 미리보기</TableHead>
-              <TableHead className="w-20">상태</TableHead>
-              <TableHead className="w-40">생성일</TableHead>
-              <TableHead className="w-40">수정일</TableHead>
-              <TableHead className="w-24">액션</TableHead>
+              <TableHead className="w-[10%]">ID</TableHead>
+              <TableHead className="w-[10%]">제목</TableHead>
+              <TableHead className="w-[20%]">내용 미리보기</TableHead>
+              <TableHead className="w-[10%]">상태</TableHead>
+              <TableHead className="w-[20%]">생성일</TableHead>
+              <TableHead className="w-[20%]">수정일</TableHead>
+              <TableHead className="w-[10%]">액션</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -271,14 +269,14 @@ export default function NotesTable({
               </TableRow>
             ) : (
               noteData.notes.map((note) => (
-                <TableRow key={note.id} className="hover:bg-gray-50">
+                <TableRow key={note.id} className="hover:bg-accent">
                   <TableCell className="font-mono text-xs text-gray-500">
                     {note.id.substring(0, 8)}...
                   </TableCell>
                   <TableCell>
                     <Link
                       href={`/notes/${note.id}`}
-                      className="font-medium text-blue-600 hover:text-blue-800 hover:underline"
+                      className="font-medium text-primary hover:text-primary-foreground hover:underline"
                     >
                       {note.title}
                     </Link>
@@ -294,19 +292,26 @@ export default function NotesTable({
                     {formatDate(note.updatedAt)}
                   </TableCell>
                   <TableCell>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDelete(note.id, note.title)}
-                      disabled={deleting === note.id || isPending}
-                      className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                    >
-                      {deleting === note.id ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Trash2 className="h-4 w-4" />
-                      )}
-                    </Button>
+                    <ConfirmDialog
+                      title={`${note.title} 노트를 정말 삭제하시겠습니까?`}
+                      description="이 작업은 되돌릴 수 없습니다. 계정이 영구적으로 삭제되며 서버에서 모든 데이터가 제거됩니다."
+                      onConfirm={() => handleDelete(note.id)}
+                      loading={isPending}
+                      trigger={
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={deleting === note.id || isPending}
+                          className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-accent"
+                        >
+                          {deleting === note.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                        </Button>
+                      }
+                    ></ConfirmDialog>
                   </TableCell>
                 </TableRow>
               ))
@@ -315,27 +320,7 @@ export default function NotesTable({
         </Table>
       </div>
 
-      {/* 페이지네이션 - 새로운 Paginator 컴포넌트 사용 */}
-      <Paginator
-        pagination={noteData.pagination}
-        currentPage={currentPage}
-        onPageChange={handlePageChange}
-        disabled={isPending}
-        className="mt-6"
-      />
-
-      {/* 페이지 정보 */}
-      {noteData.pagination.totalCount > 0 && (
-        <div className="text-center text-sm text-gray-500">
-          전체 {noteData.pagination.totalCount}개 중{" "}
-          {(currentPage - 1) * ITEMS_PER_PAGE + 1}-
-          {Math.min(
-            currentPage * ITEMS_PER_PAGE,
-            noteData.pagination.totalCount
-          )}
-          개 표시
-        </div>
-      )}
+      {/* 페이지네이션 */}
     </div>
   );
 }

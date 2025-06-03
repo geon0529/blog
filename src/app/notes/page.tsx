@@ -18,13 +18,12 @@ export default async function NotesPage(props: NotesPageProps) {
   const noteData = await fetchNotes(page, 10, search);
 
   return (
-    <div className="max-w-6xl mx-auto p-6">
+    <div className="w-full max-w-6xl p-6">
       <div className="space-y-6">
         {/* 헤더 */}
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-bold">노트 목록</h1>
-            <p className="text-gray-600 mt-1">서버 컴포넌트 + 캐싱 적용됨</p>
             <p className="text-gray-600 mt-1">
               총 {noteData.pagination.totalCount}개의 노트
             </p>

@@ -10,8 +10,11 @@ export default async function LayoutHeader() {
 
   return (
     <div className="w-full h-12 p-4 flex items-center justify-between">
-      <ThemeSwitcher />
-      {user ? <UserInfo user={user} /> : <div></div>}
+      <div></div>
+      <div className="flex items-center">
+        <ThemeSwitcher />
+        {user ? <UserInfo user={user} /> : <></>}
+      </div>
     </div>
   );
 }
