@@ -6,11 +6,12 @@ import { z } from "zod";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const resolvedParams = await params;
     // UUID 유효성 검사
-    const { id } = noteIdSchema.parse({ id: params.id });
+    const { id } = noteIdSchema.parse({ id: resolvedParams.id });
 
     const note = await getNoteById(id);
     if (!note) {
@@ -36,11 +37,12 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const resolvedParams = await params;
     // UUID 유효성 검사
-    const { id } = noteIdSchema.parse({ id: params.id });
+    const { id } = noteIdSchema.parse({ id: resolvedParams.id });
 
     // 요청 본문 검증
     const body = await request.json();
@@ -83,12 +85,13 @@ export async function PUT(
 }
 
 export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { id: string } }
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const resolvedParams = await params;
     // UUID 유효성 검사
-    const { id } = noteIdSchema.parse({ id: params.id });
+    const { id } = noteIdSchema.parse({ id: resolvedParams.id });
 
     const success = await deleteNote(id);
     if (!success) {

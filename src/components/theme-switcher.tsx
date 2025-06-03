@@ -10,22 +10,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Laptop, Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
-import { useEffect, useState } from "react";
 
-const ThemeSwitcher = () => {
-  const [mounted, setMounted] = useState(false);
+export default function ThemeSwitcher() {
   const { theme, setTheme } = useTheme();
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!mounted) {
-    return null;
-  }
-
   const ICON_SIZE = 16;
-
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -72,6 +60,4 @@ const ThemeSwitcher = () => {
       </DropdownMenuContent>
     </DropdownMenu>
   );
-};
-
-export { ThemeSwitcher };
+}

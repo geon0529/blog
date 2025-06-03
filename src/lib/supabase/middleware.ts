@@ -1,5 +1,5 @@
-import { isGuestOnlyRoutes, isProtectedRoutes } from "@/lib/routerGuard";
-import { andPipe, orPipe } from "@/lib/utils";
+import { isGuestOnlyRoutes, isProtectedRoutes } from "@/lib/router/routerGuard";
+import { andPipe, orPipe } from "@/lib/utils/utils";
 import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
 

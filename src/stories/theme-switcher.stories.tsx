@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { expect, userEvent, within } from "@storybook/test";
 import { ThemeProvider } from "next-themes";
-import { ThemeSwitcher } from "./theme-switcher";
+import { ThemeSwitcher } from "../components/theme-switcher";
 import clsx from "clsx";
 
 const meta = {

@@ -37,7 +37,7 @@ export const noteIdSchema = z.object({
   id: z.string().uuid("올바른 UUID 형식이 아닙니다"),
 });
 
-// TypeScript 타입들
+// 파생 타입
 export type Note = typeof notes.$inferSelect;
 export type NewNote = typeof notes.$inferInsert;
 export type CreateNote = z.infer<typeof createNoteSchema>;
