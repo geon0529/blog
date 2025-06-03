@@ -31,8 +31,6 @@ export async function fetchNotes(
     params.append("search", search);
   }
 
-  console.log("하이킥 API_BASE_URL", API_BASE_URL);
-
   try {
     // ✅ 서버에서 실행되므로 next 옵션 적용됨
     const response = await fetch(`${API_BASE_URL}/api/notes?${params}`, {

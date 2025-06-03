@@ -26,6 +26,11 @@ import {
 import { Note } from "@/lib/db/schema";
 import { PaginationInfo } from "@/types/common.type";
 import ConfirmDialog from "@/components/dialogs/confirm-dialog";
+import {
+  formatDateConditional,
+  formatDateDetailed,
+  formatDateKorean,
+} from "@/lib/utils/date";
 
 interface NotesResponse {
   notes: Note[];
@@ -126,18 +131,6 @@ export default function NotesTable({
     if (e.key === "Enter") {
       handleSearch();
     }
-  };
-
-  // 날짜 포맷팅 함수
-  const formatDate = (date: Date | string) => {
-    const d = new Date(date);
-    return d.toLocaleDateString("ko-KR", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
   };
 
   // 내용 미리보기
@@ -286,10 +279,10 @@ export default function NotesTable({
                   </TableCell>
                   <TableCell>{getNoteBadge(note)}</TableCell>
                   <TableCell className="text-sm text-gray-500">
-                    {formatDate(note.createdAt)}
+                    {formatDateConditional(note.createdAt)}
                   </TableCell>
                   <TableCell className="text-sm text-gray-500">
-                    {formatDate(note.updatedAt)}
+                    {formatDateConditional(note.updatedAt)}
                   </TableCell>
                   <TableCell>
                     <ConfirmDialog

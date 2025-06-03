@@ -54,9 +54,15 @@ export default function ConfirmDialog({
         </DialogHeader>
         <DialogFooter className="gap-2">
           <DialogClose asChild>
-            <Button variant="outline">{cancelLabel}</Button>
+            <Button variant="outline" disabled={loading}>
+              {cancelLabel}
+            </Button>
           </DialogClose>
-          <Button variant="destructive" onClick={handleConfirm}>
+          <Button
+            variant="destructive"
+            onClick={handleConfirm}
+            disabled={loading}
+          >
             {loading ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
