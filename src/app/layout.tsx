@@ -2,6 +2,7 @@ import "./globals.css";
 import { Geist } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import LayoutHeader from "@/components/layout/layout-header";
+import AppProvider from "@/app/app.provider";
 
 const defaultUrl = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`
@@ -26,17 +27,12 @@ export default function RootLayout({
   return (
     <html lang="en" className={geistSans.className} suppressHydrationWarning>
       <body className="bg-background text-foreground">
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
+        <AppProvider>
           <main className="min-h-screen flex flex-col items-center">
             <LayoutHeader />
             {children}
           </main>
-        </ThemeProvider>
+        </AppProvider>
       </body>
     </html>
   );
