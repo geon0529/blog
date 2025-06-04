@@ -10,7 +10,7 @@ export default function AppProvider({ children }: AppProviderProps) {
   return (
     <ThemeProvider
       attribute="class"
-      defaultTheme="system"
+      defaultTheme="dark"
       enableSystem
       disableTransitionOnChange
     >

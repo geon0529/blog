@@ -3,6 +3,7 @@ import { Geist } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import LayoutHeader from "@/components/layout/layout-header";
 import AppProvider from "@/app/app.provider";
+import Universe from "@/components/universe";
 
 const defaultUrl = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`
@@ -25,10 +26,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={geistSans.className} suppressHydrationWarning>
+    <html lang="ko" className={geistSans.className} suppressHydrationWarning>
       <body className="bg-background text-foreground">
         <AppProvider>
           <main className="min-h-screen flex flex-col items-center">
+            <Universe />
             <LayoutHeader />
             {children}
           </main>
