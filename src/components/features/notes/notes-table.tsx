@@ -18,19 +18,15 @@ import { Badge } from "@/components/ui/badge";
 import { Trash2, Loader2, Search, RefreshCw } from "lucide-react";
 import CreateNoteDialog from "@/components/features/notes/create-note-dialog";
 import Paginator from "@/components/ui/paginator";
-import {
-  deleteNote,
-  fetchNotes,
-  revalidateNotesCache,
-} from "@/actions/note.actions";
-import { Note } from "@/lib/db/schema";
-import { PaginationInfo } from "@/types/common.type";
+import { Note } from "@/lib/db/schemas";
+import { PaginationInfo } from "@/types/common.types";
 import ConfirmDialog from "@/components/dialogs/confirm-dialog";
 import {
   formatDateConditional,
   formatDateDetailed,
   formatDateKorean,
 } from "@/lib/utils/date";
+import { notesService } from "@/services/notes";
 
 interface NotesResponse {
   notes: Note[];
@@ -53,19 +49,16 @@ export default function NotesTable({
   const [deleting, setDeleting] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
-
   const router = useRouter();
   const searchParams = useSearchParams();
   const currentPage = Number(searchParams.get("page")) || page;
-
-  const ITEMS_PER_PAGE = 10;
 
   const handleDelete = async (id: string) => {
     setDeleting(id);
     setError(null);
     try {
+      await notesService.client.deleteNote(id);
       startTransition(async () => {
-        await deleteNote(id);
         const shouldGoToPreviousPage =
           noteData.notes.length === 1 && currentPage > 1;
 
@@ -75,7 +68,6 @@ export default function NotesTable({
           params.set("page", newPage.toString());
           router.push(`/notes?${params.toString()}`);
         } else {
-          await revalidateNotesCache();
           router.refresh();
         }
       });
@@ -117,13 +109,7 @@ export default function NotesTable({
   // 수동 캐시 새로고침 - useTransition 활용
   const handleRefresh = () => {
     setError(null);
-    startTransition(async () => {
-      try {
-        await revalidateNotesCache();
-      } catch (err) {
-        setError("새로고침에 실패했습니다.");
-      }
-    });
+    router.refresh();
   };
 
   // Enter 키 검색 처리
@@ -289,12 +275,12 @@ export default function NotesTable({
                       title={`${note.title} 노트를 정말 삭제하시겠습니까?`}
                       description="이 작업은 되돌릴 수 없습니다. 계정이 영구적으로 삭제되며 서버에서 모든 데이터가 제거됩니다."
                       onConfirm={() => handleDelete(note.id)}
-                      loading={isPending}
+                      loading={deleting === note.id}
                       trigger={
                         <Button
                           variant="outline"
                           size="sm"
-                          disabled={deleting === note.id || isPending}
+                          disabled={deleting === note.id}
                           className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-accent"
                         >
                           {deleting === note.id ? (
@@ -312,8 +298,6 @@ export default function NotesTable({
           </TableBody>
         </Table>
       </div>
-
-      {/* 페이지네이션 */}
     </div>
   );
 }

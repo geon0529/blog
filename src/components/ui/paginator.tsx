@@ -1,6 +1,6 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
-import { PaginationInfo } from "@/types/common.type";
+import { PaginationInfo } from "@/types/common.types";
 
 interface PaginatorProps {
   pagination: PaginationInfo;

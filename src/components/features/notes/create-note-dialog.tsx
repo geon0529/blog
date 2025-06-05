@@ -16,6 +16,7 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 import { Loader2, Plus } from "lucide-react";
+import { notesService } from "@/services/notes";
 
 interface CreateNoteDialogProps {
   onNoteCreated?: () => void; // 노트 생성 후 콜백
@@ -59,27 +60,7 @@ export default function CreateNoteDialog({
     try {
       setLoading(true);
       setError(null);
-
-      // API 호출
-      const response = await fetch("/api/notes", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          title: title.trim(),
-          content: content.trim(),
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "노트 생성에 실패했습니다.");
-      }
-
-      const createdNote = await response.json();
-
-      // 성공시 다이얼로그 닫기 및 콜백 호출
+      await notesService.client.createNote(title.trim(), content.trim());
       handleClose();
       onNoteCreated?.();
     } catch (err) {
