@@ -2,19 +2,13 @@
 import { API_BASE_URL } from "@/lib/constants";
 import { Note } from "@/lib/db/schemas";
 import { ApiError, handleApiError, isApiError } from "@/lib/errors/error";
-import { PaginationInfo } from "@/types/common.types";
-
-interface NotesResponse {
-  notes: Note[];
-  pagination: PaginationInfo;
-  search?: string;
-}
+import { NotesResponse } from "@/services/notes";
 
 /**
  * 클라이언트 컴포넌트용 API 호출 서비스
  * 클라이언트에서만 사용 가능!
  */
-export const ClientNotesService = {
+export const NotesService = {
   /**
    * note 전체 조회 (클라이언트용)
    */
@@ -72,6 +66,7 @@ export const ClientNotesService = {
       const newNote = await response.json();
       return newNote;
     } catch (error) {
+      console.log("Debug - ", error);
       if (isApiError(error)) {
         throw error;
       }
@@ -102,7 +97,6 @@ export const ClientNotesService = {
       if (!response.ok) {
         await handleApiError(response);
       }
-
       const updatedNote = await response.json();
       return updatedNote;
     } catch (error) {
@@ -129,7 +123,6 @@ export const ClientNotesService = {
       if (!response.ok) {
         await handleApiError(response);
       }
-
       const result = await response.json();
       return result;
     } catch (error) {

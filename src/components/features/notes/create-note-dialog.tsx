@@ -16,7 +16,7 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 import { Loader2, Plus } from "lucide-react";
-import { notesService } from "@/services/notes";
+import { NotesService } from "@/services/notes/client";
 
 interface CreateNoteDialogProps {
   onNoteCreated?: () => void; // 노트 생성 후 콜백
@@ -60,7 +60,7 @@ export default function CreateNoteDialog({
     try {
       setLoading(true);
       setError(null);
-      await notesService.client.createNote(title.trim(), content.trim());
+      await NotesService.createNote(title.trim(), content.trim());
       handleClose();
       onNoteCreated?.();
     } catch (err) {

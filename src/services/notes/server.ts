@@ -1,6 +1,6 @@
 // lib/services/notes/server.ts - 서버 전용
 import "server-only";
-import { unstable_cache } from "next/cache";
+import { revalidateTag, unstable_cache } from "next/cache";
 import {
   getNotesWithPagination,
   getNoteById,
@@ -8,19 +8,13 @@ import {
 } from "@/lib/db/queries/notes";
 import { Note } from "@/lib/db/schemas";
 import { NotFoundError } from "@/lib/errors/domain-error";
-import { PaginationInfo } from "@/types/common.types";
-
-interface NotesResponse {
-  notes: Note[];
-  pagination: PaginationInfo;
-  search?: string;
-}
+import { CACHE_KEYS } from "@/types/common.types";
+import { CACHE_TAGS, NotesResponse } from "@/services/notes";
 
 /**
  * 서버 컴포넌트용 데이터베이스 직접 접근 서비스
- * 서버에서만 사용 가능!
  */
-export const ServerNotesService = {
+export const service = {
   /**
    * note 전체 조회 (서버용)
    */
@@ -62,7 +56,6 @@ export const ServerNotesService = {
         search,
       };
     } catch (error) {
-      console.error("ServerNotesService.fetchNotes error:", error);
       throw error;
     }
   },
@@ -78,7 +71,6 @@ export const ServerNotesService = {
       }
       return note;
     } catch (error) {
-      console.error("ServerNotesService.fetchNote error:", error);
       throw error;
     }
   },
@@ -90,11 +82,11 @@ export const ServerNotesService = {
  */
 export const fetchNotesWithCache = unstable_cache(
   async (page: number = 1, limit: number = 10, search?: string) => {
-    return ServerNotesService.fetchNotes(page, limit, search);
+    return service.fetchNotes(page, limit, search);
   },
-  ["server-notes"],
+  [CACHE_KEYS.NOTES],
   {
-    tags: ["notes"],
+    tags: [CACHE_TAGS.NOTES],
     revalidate: 300, // 5분
   }
 );
@@ -105,18 +97,18 @@ export const fetchNotesWithCache = unstable_cache(
  */
 export const fetchNoteWithCache = unstable_cache(
   async (id: string) => {
-    return ServerNotesService.fetchNote(id);
+    return service.fetchNote(id);
   },
-  ["server-note"],
+  [CACHE_KEYS.NOTE],
   {
-    tags: ["notes"],
+    tags: [CACHE_TAGS.NOTES],
     revalidate: 300,
   }
 );
 
-// 캐시된 함수들을 ServerNotesService에 추가하는 확장된 버전
-export const ServerNotesServiceWithCache = {
-  ...ServerNotesService,
+// 캐시된 함수들을 service에 추가하는 확장된 버전
+export const NotesService = {
+  ...service,
   fetchNotesWithCache,
   fetchNoteWithCache,
 } as const;

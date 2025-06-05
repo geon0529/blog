@@ -26,7 +26,9 @@ import {
   formatDateDetailed,
   formatDateKorean,
 } from "@/lib/utils/date";
-import { notesService } from "@/services/notes";
+import { NotesService } from "@/services/notes/client";
+import { revalidateNotes } from "@/services/notes/revalidate";
+import { andPipe, equal, orPipe } from "@/lib/utils/utils";
 
 interface NotesResponse {
   notes: Note[];
@@ -54,10 +56,13 @@ export default function NotesTable({
   const currentPage = Number(searchParams.get("page")) || page;
 
   const handleDelete = async (id: string) => {
+    if (deleting) {
+      throw new Error("삭제 중인 노트가 있습니다.");
+    }
     setDeleting(id);
     setError(null);
     try {
-      await notesService.client.deleteNote(id);
+      await NotesService.deleteNote(id);
       startTransition(async () => {
         const shouldGoToPreviousPage =
           noteData.notes.length === 1 && currentPage > 1;
@@ -107,9 +112,12 @@ export default function NotesTable({
   };
 
   // 수동 캐시 새로고침 - useTransition 활용
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     setError(null);
-    router.refresh();
+    await revalidateNotes();
+    startTransition(() => {
+      router.refresh();
+    });
   };
 
   // Enter 키 검색 처리
@@ -273,14 +281,14 @@ export default function NotesTable({
                   <TableCell>
                     <ConfirmDialog
                       title={`${note.title} 노트를 정말 삭제하시겠습니까?`}
-                      description="이 작업은 되돌릴 수 없습니다. 계정이 영구적으로 삭제되며 서버에서 모든 데이터가 제거됩니다."
-                      onConfirm={() => handleDelete(note.id)}
-                      loading={deleting === note.id}
+                      description="이 작업은 되돌릴 수 없습니다. 노트가 영구적으로 삭제되며 서버에서 모든 데이터가 제거됩니다."
+                      onConfirm={async () => await handleDelete(note.id)}
+                      loading={orPipe(equal(deleting, note.id), isPending)}
                       trigger={
                         <Button
                           variant="outline"
                           size="sm"
-                          disabled={deleting === note.id}
+                          disabled={orPipe(equal(deleting, note.id), isPending)}
                           className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-accent"
                         >
                           {deleting === note.id ? (

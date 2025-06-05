@@ -7,12 +7,13 @@ import {
 import {
   ApiError,
   errorToResponse,
-  getCurrentUser,
   handleDomainError,
   zodErrorToResponse,
 } from "@/lib/errors/error";
 import { createNoteSchema } from "@/lib/db/schemas";
 import { z } from "zod";
+import { CommonService } from "@/services/common/server";
+import { revalidateNotes } from "@/services/notes/revalidate";
 
 /**
  * GET /api/notes - 노트 목록 조회 (페이지네이션, 검색 지원)
@@ -97,7 +98,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     // 사용자 인증 확인
-    const user = await getCurrentUser();
+    const user = await CommonService.getCurrentUser();
     const parsedRequest = await request.json();
     const body = {
       ...parsedRequest,
@@ -115,6 +116,8 @@ export async function POST(request: NextRequest) {
 
     // 도메인 로직 실행
     const note = await createNote(noteData);
+    // 캐시 파괴
+    revalidateNotes();
 
     return NextResponse.json(note, { status: 201 });
   } catch (error) {

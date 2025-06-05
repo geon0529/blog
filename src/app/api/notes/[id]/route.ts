@@ -9,12 +9,13 @@ import {
 import {
   ApiError,
   errorToResponse,
-  getCurrentUser,
   handleDomainError,
   zodErrorToResponse,
 } from "@/lib/errors/error";
 import { updateNoteSchema, noteIdSchema } from "@/lib/db/schemas";
 import { z } from "zod";
+import { CommonService } from "@/services/common/server";
+import { revalidateNotes } from "@/services/notes/revalidate";
 
 /**
  * 노트 ID 검증 헬퍼
@@ -104,7 +105,7 @@ export async function PUT(
 ) {
   try {
     // 사용자 인증 확인
-    const user = await getCurrentUser();
+    const user = await CommonService.getCurrentUser();
 
     const resolvedParams = await params;
 
@@ -164,7 +165,7 @@ export async function DELETE(
 ) {
   try {
     // 사용자 인증 확인
-    const user = await getCurrentUser();
+    const user = await CommonService.getCurrentUser();
     const resolvedParams = await params;
 
     // 노트 ID 검증
@@ -175,6 +176,7 @@ export async function DELETE(
 
     // 도메인 로직 실행
     const success = await deleteNote(noteId);
+    revalidateNotes();
 
     if (!success) {
       throw new ApiError("노트 삭제에 실패했습니다.", 500, "INTERNAL_ERROR");
@@ -213,7 +215,7 @@ export async function PATCH(
 ) {
   try {
     // 사용자 인증 확인
-    const user = await getCurrentUser();
+    const user = await CommonService.getCurrentUser();
 
     const resolvedParams = await params;
 
@@ -249,6 +251,8 @@ export async function PATCH(
 
     // 도메인 로직 실행
     const updatedNote = await updateNote(noteId, validatedData);
+    // 캐시 파괴
+    revalidateNotes();
 
     return NextResponse.json(updatedNote);
   } catch (error) {

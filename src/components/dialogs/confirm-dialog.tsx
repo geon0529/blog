@@ -19,7 +19,7 @@ interface ConfirmDialogProps {
   loading?: boolean;
   cancelLabel?: string;
   confirmLabel?: string;
-  onConfirm?: () => void;
+  onConfirm?: (() => void) | (() => Promise<void>);
 }
 
 export default function ConfirmDialog({
@@ -39,8 +39,8 @@ export default function ConfirmDialog({
     });
   };
 
-  const handleConfirm = () => {
-    onConfirm && onConfirm();
+  const handleConfirm = async () => {
+    onConfirm && (await onConfirm());
     handleClose();
   };
 

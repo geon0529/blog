@@ -47,3 +47,7 @@ export const andPipe = (...args: any[]) => {
 export const orPipe = (...args: any[]) => {
   return args.reduce((acc, current) => acc || current);
 };
+
+export const equal = (arg1: any, arg2: any) => {
+  return arg1 == arg2;
+};

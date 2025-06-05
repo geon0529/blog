@@ -3,7 +3,6 @@
 // ================================================================
 
 import { DatabaseError, NotFoundError } from "@/lib/errors/domain-error";
-import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import z from "zod";
 
@@ -199,21 +198,4 @@ export function zodErrorToResponse(zodError: z.ZodError): NextResponse {
   };
 
   return NextResponse.json(errorResponse, { status: 400 });
-}
-
-/**
- * 현재 사용자 인증 확인
- */
-export async function getCurrentUser() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  console.log("하이킥 user", user);
-
-  if (!user) {
-    throw new ApiError("로그인이 필요합니다.", 401, "UNAUTHORIZED");
-  }
-
-  return user;
 }
