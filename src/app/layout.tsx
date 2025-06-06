@@ -30,7 +30,7 @@ export default function RootLayout({
       <body className="bg-background text-foreground">
         <AppProvider>
           <main className="min-h-screen flex flex-col items-center">
-            <Universe />
+            {/* <Universe /> */}
             <LayoutHeader />
             {children}
           </main>

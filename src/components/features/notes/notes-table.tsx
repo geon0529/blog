@@ -28,7 +28,7 @@ import {
 } from "@/lib/utils/date";
 import { NotesService } from "@/services/notes/client";
 import { revalidateNotes } from "@/services/notes/revalidate";
-import { andPipe, equal, orPipe } from "@/lib/utils/utils";
+import { andPipe, equal, orPipe } from "@/lib/utils/function";
 
 interface NotesResponse {
   notes: Note[];
