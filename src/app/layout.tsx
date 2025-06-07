@@ -2,7 +2,7 @@ import "./globals.css";
 import { Geist } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import LayoutHeader from "@/components/layout/layout-header";
-import AppProvider from "@/app/app.provider";
+import AppProvider from "@/app/providers";
 import Universe from "@/components/universe";
 
 const defaultUrl = process.env.VERCEL_URL
