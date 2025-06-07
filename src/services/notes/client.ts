@@ -120,8 +120,6 @@ export const NotesService = {
         method: "DELETE",
       });
 
-      console.log("하이킥 response", response);
-
       if (!response.ok) {
         await handleApiError(response);
       }
@@ -171,5 +169,33 @@ export const NotesService = {
     page: number = 1
   ): Promise<NotesResponse> {
     return this.fetchNotes(page, 10, searchQuery);
+  },
+
+  /**
+   * 노트 좋아요 토글 (클라이언트용)
+   */
+  async toggleNoteLike(
+    id: string
+  ): Promise<{ isLiked: boolean; likeCount: number; message: string }> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/notes/${id}/like`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        await handleApiError(response);
+      }
+
+      const result = await response.json();
+      return result;
+    } catch (error) {
+      if (isApiError(error)) {
+        throw error;
+      }
+      throw new ApiError("좋아요 처리에 실패했습니다.", 500, "INTERNAL_ERROR");
+    }
   },
 } as const;

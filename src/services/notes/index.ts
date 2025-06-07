@@ -1,6 +1,9 @@
-import { Note } from "@/lib/db/schemas";
+import { Note } from "@/lib/db/queries";
 import { PaginationInfo } from "@/types/common.types";
 
+/**
+ * 노트 조회시 response
+ */
 export interface NotesResponse {
   notes: Note[];
   pagination: PaginationInfo;

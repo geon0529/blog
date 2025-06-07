@@ -2,17 +2,113 @@ import { DatabaseError, NotFoundError } from "@/lib/api/errors/domain-error";
 import { db } from "../../index";
 import {
   notes,
-  type Note,
+  noteLikes,
+  profiles, // 유저 정보 가져오기 위해 필요
   type CreateNote,
   type UpdateNote,
 } from "../../schemas";
-import { eq, desc, ilike, or, count, and } from "drizzle-orm";
+import { eq, desc, ilike, or, count, and, inArray } from "drizzle-orm";
+
+/* 좋아요 정보가 포함된 노트 타입 (기본 타입으로 사용) */
+export type Note = {
+  id: string;
+  title: string;
+  content: string;
+  authorId: string;
+  createdAt: Date;
+  updatedAt: Date;
+  likes: {
+    count: number;
+    users: {
+      id: string;
+      email: string;
+    }[];
+  };
+};
+
+/**
+ * 노트들의 좋아요 정보를 가져오는 헬퍼 함수
+ */
+async function getNotesLikesInfo(noteIds: string[]): Promise<{
+  [noteId: string]: {
+    count: number;
+    users: { id: string; email: string }[];
+  };
+}> {
+  if (noteIds.length === 0) return {};
+
+  try {
+    // 좋아요 정보와 유저 정보를 join해서 가져오기
+    const likesWithUsers = await db
+      .select({
+        noteId: noteLikes.noteId,
+        userId: noteLikes.userId,
+        userEmail: profiles.email,
+      })
+      .from(noteLikes)
+      .innerJoin(profiles, eq(noteLikes.userId, profiles.id))
+      .where(inArray(noteLikes.noteId, noteIds));
+
+    // 노트별로 그룹화
+    const result: {
+      [noteId: string]: {
+        count: number;
+        users: Array<{ id: string; email: string }>;
+      };
+    } = {};
+
+    // 초기화
+    noteIds.forEach((noteId) => {
+      result[noteId] = { count: 0, users: [] };
+    });
+
+    // 데이터 집계
+    likesWithUsers.forEach((like) => {
+      // email이 null인 경우 스킵
+      if (!like.userEmail) return;
+
+      if (!result[like.noteId]) {
+        result[like.noteId] = { count: 0, users: [] };
+      }
+
+      result[like.noteId].count++;
+      result[like.noteId].users.push({
+        id: like.userId,
+        email: like.userEmail,
+      });
+    });
+
+    return result;
+  } catch (error) {
+    console.error("Error fetching notes likes info:", error);
+    return {};
+  }
+}
+
+/**
+ * 원본 노트 배열에 좋아요 정보 추가하는 헬퍼
+ */
+async function addLikesToNotes(rawNotes: any[]): Promise<Note[]> {
+  const noteIds = rawNotes.map((note) => note.id);
+  const likesInfo = await getNotesLikesInfo(noteIds);
+
+  return rawNotes.map((note) => ({
+    ...note,
+    likes: likesInfo[note.id] || { count: 0, users: [] },
+  }));
+}
+
 /**
  * 모든 노트 조회
  */
 export async function getAllNotes(): Promise<Note[]> {
   try {
-    return await db.select().from(notes).orderBy(desc(notes.createdAt));
+    const rawNotes = await db
+      .select()
+      .from(notes)
+      .orderBy(desc(notes.createdAt));
+
+    return await addLikesToNotes(rawNotes);
   } catch (error) {
     console.error("Database error in getAllNotes:", error);
     throw new DatabaseError(
@@ -27,11 +123,13 @@ export async function getAllNotes(): Promise<Note[]> {
  */
 export async function getNotesByUserId(userId: string): Promise<Note[]> {
   try {
-    return await db
+    const rawNotes = await db
       .select()
       .from(notes)
       .where(eq(notes.authorId, userId))
       .orderBy(desc(notes.createdAt));
+
+    return await addLikesToNotes(rawNotes);
   } catch (error) {
     console.error("Database error in getNotesByUserId:", error);
     throw new DatabaseError(
@@ -47,7 +145,13 @@ export async function getNotesByUserId(userId: string): Promise<Note[]> {
 export async function getNoteById(id: string): Promise<Note | undefined> {
   try {
     const result = await db.select().from(notes).where(eq(notes.id, id));
-    return result[0];
+
+    if (result.length === 0) {
+      return undefined;
+    }
+
+    const notesWithLikes = await addLikesToNotes(result);
+    return notesWithLikes[0];
   } catch (error) {
     console.error("Database error in getNoteById:", error);
     throw new DatabaseError(
@@ -75,7 +179,9 @@ export async function createNote(data: CreateNote): Promise<Note> {
       throw new DatabaseError("노트 생성에 실패했습니다.", "createNote");
     }
 
-    return result[0];
+    // 새로 생성된 노트에 좋아요 정보 추가 (빈 상태)
+    const notesWithLikes = await addLikesToNotes(result);
+    return notesWithLikes[0];
   } catch (error) {
     if (error instanceof DatabaseError) {
       throw error;
@@ -106,7 +212,9 @@ export async function updateNote(id: string, data: UpdateNote): Promise<Note> {
       throw new NotFoundError("노트");
     }
 
-    return result[0];
+    // 업데이트된 노트에 좋아요 정보 추가
+    const notesWithLikes = await addLikesToNotes(result);
+    return notesWithLikes[0];
   } catch (error) {
     if (error instanceof NotFoundError) {
       throw error;
@@ -164,11 +272,13 @@ export async function searchNotes(
       ? and(searchCondition, eq(notes.authorId, userId))
       : searchCondition;
 
-    return await db
+    const rawNotes = await db
       .select()
       .from(notes)
       .where(whereCondition)
       .orderBy(desc(notes.createdAt));
+
+    return await addLikesToNotes(rawNotes);
   } catch (error) {
     console.error("Database error in searchNotes:", error);
     throw new DatabaseError("노트 검색 중 오류가 발생했습니다.", "searchNotes");
@@ -199,7 +309,7 @@ export async function getNotesWithPagination(
     const whereCondition = userId ? eq(notes.authorId, userId) : undefined;
 
     // 노트와 총 개수를 병렬로 조회
-    const [notesResult, totalResult] = await Promise.all([
+    const [rawNotes, totalResult] = await Promise.all([
       db
         .select()
         .from(notes)
@@ -213,8 +323,11 @@ export async function getNotesWithPagination(
     const totalCount = totalResult[0].count as number;
     const totalPages = Math.ceil(totalCount / limit);
 
+    // 좋아요 정보 추가
+    const notesWithLikes = await addLikesToNotes(rawNotes);
+
     return {
-      notes: notesResult,
+      notes: notesWithLikes,
       pagination: {
         currentPage: page,
         totalPages,
@@ -308,12 +421,14 @@ export async function getRecentNotes(
   try {
     const whereCondition = userId ? eq(notes.authorId, userId) : undefined;
 
-    return await db
+    const rawNotes = await db
       .select()
       .from(notes)
       .where(whereCondition)
       .orderBy(desc(notes.createdAt))
       .limit(limit);
+
+    return await addLikesToNotes(rawNotes);
   } catch (error) {
     console.error("Database error in getRecentNotes:", error);
     throw new DatabaseError(

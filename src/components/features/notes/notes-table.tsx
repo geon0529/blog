@@ -3,6 +3,7 @@
 import React, { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useMutation } from "@tanstack/react-query";
 import {
   Table,
   TableBody,
@@ -15,26 +16,19 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Trash2, Loader2, Search, RefreshCw } from "lucide-react";
+import { Trash2, Loader2, Search, RefreshCw, Heart } from "lucide-react";
 import CreateNoteDialog from "@/components/features/notes/create-note-dialog";
 import Paginator from "@/components/ui/paginator";
-import { Note } from "@/lib/db/schemas";
 import { PaginationInfo } from "@/types/common.types";
 import ConfirmDialog from "@/components/dialogs/confirm-dialog";
-import {
-  formatDateConditional,
-  formatDateDetailed,
-  formatDateKorean,
-} from "@/lib/utils/date";
+import { formatDateConditional } from "@/lib/utils/date";
 import { NotesService } from "@/services/notes/client";
 import { revalidateNotes } from "@/services/notes/revalidate";
-import { andPipe, equal, orPipe } from "@/lib/utils/function";
-
-interface NotesResponse {
-  notes: Note[];
-  pagination: PaginationInfo;
-  search?: string;
-}
+import { equal, orPipe } from "@/lib/utils/function";
+import { NotesResponse } from "@/services/notes";
+import { Note } from "@/lib/db/queries";
+import { useUserInfo } from "@/hooks/useUserInfo";
+import { isApiError } from "@/lib/api/errors/error";
 
 interface NotesTableProps {
   noteData: NotesResponse;
@@ -54,6 +48,49 @@ export default function NotesTable({
   const router = useRouter();
   const searchParams = useSearchParams();
   const currentPage = Number(searchParams.get("page")) || page;
+  const { data: user } = useUserInfo();
+  const currentUserId = user?.id;
+
+  // 좋아요 토글 mutation
+  const likeMutation = useMutation({
+    mutationFn: (noteId: string) => NotesService.toggleNoteLike(noteId),
+    onSuccess: (data, noteId) => {
+      console.log("좋아요 성공:", data);
+      setError(null);
+      startTransition(() => {
+        router.refresh();
+      });
+    },
+    onError: (error, noteId) => {
+      console.error("좋아요 실패:", error);
+      if (isApiError(error)) {
+        setError(error.message);
+      } else {
+        setError("좋아요 처리에 실패했습니다.");
+      }
+    },
+  });
+
+  // 현재 유저가 해당 노트에 좋아요했는지 확인
+  const isLikedByCurrentUser = (note: Note): boolean => {
+    if (!currentUserId) return false;
+    return note.likes.users.some((user) => user.id === currentUserId);
+  };
+
+  // 좋아요 토글 처리
+  const handleLikeToggle = async (noteId: string) => {
+    if (!currentUserId) {
+      setError("로그인이 필요합니다.");
+      return;
+    }
+
+    if (likeMutation.isPending) {
+      return; // 이미 처리 중
+    }
+
+    setError(null);
+    likeMutation.mutate(noteId);
+  };
 
   const handleDelete = async (id: string) => {
     if (deleting) {
@@ -233,12 +270,13 @@ export default function NotesTable({
           </TableCaption>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[10%]">ID</TableHead>
-              <TableHead className="w-[10%]">제목</TableHead>
+              <TableHead className="w-[8%]">ID</TableHead>
+              <TableHead className="w-[12%]">제목</TableHead>
               <TableHead className="w-[20%]">내용 미리보기</TableHead>
-              <TableHead className="w-[10%]">상태</TableHead>
-              <TableHead className="w-[20%]">생성일</TableHead>
-              <TableHead className="w-[20%]">수정일</TableHead>
+              <TableHead className="w-[8%]">상태</TableHead>
+              <TableHead className="w-[8%]">좋아요</TableHead>
+              <TableHead className="w-[17%]">생성일</TableHead>
+              <TableHead className="w-[17%]">수정일</TableHead>
               <TableHead className="w-[10%]">액션</TableHead>
             </TableRow>
           </TableHeader>
@@ -246,7 +284,7 @@ export default function NotesTable({
             {noteData.notes.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={7}
+                  colSpan={8}
                   className="text-center text-gray-500 py-8"
                 >
                   {searchQuery
@@ -272,6 +310,20 @@ export default function NotesTable({
                     {truncateContent(note.content)}
                   </TableCell>
                   <TableCell>{getNoteBadge(note)}</TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1">
+                      <Heart
+                        className={`h-4 w-4 ${
+                          isLikedByCurrentUser(note)
+                            ? "text-red-500 fill-current"
+                            : "text-gray-400"
+                        }`}
+                      />
+                      <span className="text-sm text-gray-600">
+                        {note.likes.count}
+                      </span>
+                    </div>
+                  </TableCell>
                   <TableCell className="text-sm text-gray-500">
                     {formatDateConditional(note.createdAt)}
                   </TableCell>
@@ -279,26 +331,65 @@ export default function NotesTable({
                     {formatDateConditional(note.updatedAt)}
                   </TableCell>
                   <TableCell>
-                    <ConfirmDialog
-                      title={`${note.title} 노트를 정말 삭제하시겠습니까?`}
-                      description="이 작업은 되돌릴 수 없습니다. 노트가 영구적으로 삭제되며 서버에서 모든 데이터가 제거됩니다."
-                      onConfirm={async () => await handleDelete(note.id)}
-                      loading={orPipe(equal(deleting, note.id), isPending)}
-                      trigger={
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          disabled={orPipe(equal(deleting, note.id), isPending)}
-                          className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-accent"
-                        >
-                          {deleting === note.id ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Trash2 className="h-4 w-4" />
-                          )}
-                        </Button>
-                      }
-                    ></ConfirmDialog>
+                    <div className="flex gap-1">
+                      {/* 좋아요 버튼 */}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={
+                          likeMutation.isPending || isPending || !currentUserId
+                        }
+                        onClick={() => handleLikeToggle(note.id)}
+                        className={`h-8 w-8 p-0 transition-colors ${
+                          isLikedByCurrentUser(note)
+                            ? "text-red-500 hover:text-red-600 border-red-200 hover:bg-red-50"
+                            : "text-gray-400 hover:text-red-500 hover:bg-red-50"
+                        }`}
+                        title={
+                          currentUserId
+                            ? isLikedByCurrentUser(note)
+                              ? "좋아요 취소"
+                              : "좋아요"
+                            : "로그인 필요"
+                        }
+                      >
+                        {likeMutation.isPending &&
+                        likeMutation.variables === note.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Heart
+                            className={`h-4 w-4 ${
+                              isLikedByCurrentUser(note) ? "fill-current" : ""
+                            }`}
+                          />
+                        )}
+                      </Button>
+
+                      {/* 삭제 버튼 */}
+                      <ConfirmDialog
+                        title={`${note.title} 노트를 정말 삭제하시겠습니까?`}
+                        description="이 작업은 되돌릴 수 없습니다. 노트가 영구적으로 삭제되며 서버에서 모든 데이터가 제거됩니다."
+                        onConfirm={async () => await handleDelete(note.id)}
+                        loading={orPipe(equal(deleting, note.id), isPending)}
+                        trigger={
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={orPipe(
+                              equal(deleting, note.id),
+                              isPending
+                            )}
+                            className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                          >
+                            {deleting === note.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-4 w-4" />
+                            )}
+                          </Button>
+                        }
+                      />
+                    </div>
                   </TableCell>
                 </TableRow>
               ))
