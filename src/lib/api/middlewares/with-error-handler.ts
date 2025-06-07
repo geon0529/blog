@@ -13,9 +13,9 @@ import { z } from "zod";
  * 모든 API에서 공통으로 사용되는 에러 처리 로직을 하나로 통합
  */
 export function handleApiError(error: unknown): NextResponse {
-  // 1. 사용자 인증 에러 (ApiError)
+  // 1. Api 정의 에러 error.ts
   if (error instanceof ApiError) {
-    return errorToResponse(error); // <- 에러남
+    return errorToResponse(error);
   }
 
   // 2. Zod 검증 에러 처리
@@ -27,15 +27,8 @@ export function handleApiError(error: unknown): NextResponse {
   try {
     handleDomainError(error);
   } catch (apiError) {
-    return errorToResponse(apiError as ApiError); // 에러남
+    return errorToResponse(apiError as ApiError);
   }
-
-  // 4. 예상하지 못한 에러 (fallback)
-  console.error("Unexpected error in API:", error);
-  return NextResponse.json(
-    { error: "서버 내부 오류가 발생했습니다." },
-    { status: 500 }
-  );
 }
 
 /**

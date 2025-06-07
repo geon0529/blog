@@ -4,22 +4,19 @@ import {
   createNote,
   searchNotes,
 } from "@/lib/db/queries";
-import {
-  ApiError,
-  errorToResponse,
-  handleDomainError,
-  zodErrorToResponse,
-} from "@/lib/api/errors/error";
 import { createNoteSchema } from "@/lib/db/schemas";
 import { z } from "zod";
-import { CommonService } from "@/services/common/server";
 import { revalidateNotes } from "@/services/notes/revalidate";
+import { withAuth } from "@/lib/api/middlewares/with-auth";
+import { withErrorHandler } from "@/lib/api/middlewares/with-error-handler";
+import { pipe } from "motion";
 
 /**
  * GET /api/notes - 노트 목록 조회 (페이지네이션, 검색 지원)
+ * 에러 처리만 적용 (인증 불필요)
  */
-export async function GET(request: NextRequest) {
-  try {
+export const GET = withErrorHandler(
+  async (request: NextRequest): Promise<NextResponse> => {
     const { searchParams } = new URL(request.url);
 
     // 쿼리 파라미터 검증 스키마
@@ -72,70 +69,30 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json(result);
-  } catch (error) {
-    // 사용자 인증 에러
-    if (error instanceof ApiError) {
-      return errorToResponse(error);
-    }
-
-    // Zod 검증 에러 처리
-    if (error instanceof z.ZodError) {
-      return zodErrorToResponse(error);
-    }
-
-    // 도메인 에러를 API 에러로 변환 후 응답
-    try {
-      handleDomainError(error);
-    } catch (apiError) {
-      return errorToResponse(apiError as ApiError);
-    }
   }
-}
+);
 
 /**
  * POST /api/notes - 노트 생성
+ * pipe로 에러 처리 + 인증 조합
  */
-export async function POST(request: NextRequest) {
-  try {
-    // 사용자 인증 확인
-    const user = await CommonService.getCurrentUser();
-    const parsedRequest = await request.json();
-    const body = {
-      ...parsedRequest,
-      authorId: user.id,
-    };
+export const POST = pipe(
+  withErrorHandler,
+  withAuth
+)(async (user: any, request: NextRequest): Promise<NextResponse> => {
+  const parsedRequest = await request.json();
 
-    // 요청 데이터 검증
-    const validatedData = createNoteSchema.parse(body);
+  // 요청 데이터 검증
+  const validatedData = createNoteSchema.parse({
+    ...parsedRequest,
+    authorId: user.id, // 인증된 사용자 ID 자동 사용
+  });
 
-    // authorId를 현재 사용자로 설정
-    const noteData = {
-      ...validatedData,
-      authorId: user.id,
-    };
+  // 도메인 로직 실행
+  const note = await createNote(validatedData);
 
-    // 도메인 로직 실행
-    const note = await createNote(noteData);
-    // 캐시 파괴
-    revalidateNotes();
+  // 캐시 파괴
+  revalidateNotes();
 
-    return NextResponse.json(note, { status: 201 });
-  } catch (error) {
-    // 사용자 인증 에러
-    if (error instanceof ApiError) {
-      return errorToResponse(error);
-    }
-
-    // Zod 검증 에러 처리
-    if (error instanceof z.ZodError) {
-      return zodErrorToResponse(error);
-    }
-
-    // 도메인 에러를 API 에러로 변환
-    try {
-      handleDomainError(error);
-    } catch (apiError) {
-      return errorToResponse(apiError as ApiError);
-    }
-  }
-}
+  return NextResponse.json(note, { status: 201 });
+});
