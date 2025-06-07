@@ -11,7 +11,7 @@ import {
   errorToResponse,
   handleDomainError,
   zodErrorToResponse,
-} from "@/lib/errors/error";
+} from "@/lib/api/errors/error";
 import { updateNoteSchema, noteIdSchema } from "@/lib/db/schemas";
 import { z } from "zod";
 import { CommonService } from "@/services/common/server";

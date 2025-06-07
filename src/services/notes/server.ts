@@ -7,7 +7,7 @@ import {
   searchNotes as dbSearchNotes,
 } from "@/lib/db/queries/notes";
 import { Note } from "@/lib/db/schemas";
-import { NotFoundError } from "@/lib/errors/domain-error";
+import { NotFoundError } from "@/lib/api/errors/domain-error";
 import { CACHE_KEYS } from "@/types/common.types";
 import { CACHE_TAGS, NotesResponse } from "@/services/notes";
 

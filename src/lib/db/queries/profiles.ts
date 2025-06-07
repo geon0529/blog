@@ -1,4 +1,4 @@
-import { DatabaseError, NotFoundError } from "@/lib/errors/domain-error";
+import { DatabaseError } from "@/lib/api/errors/domain-error";
 import { db } from "../index";
 import { profiles, type Profile } from "../schemas/profiles";
 import { eq } from "drizzle-orm";

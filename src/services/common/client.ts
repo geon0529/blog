@@ -1,4 +1,4 @@
-import { ApiError } from "@/lib/errors/error";
+import { ApiError } from "@/lib/api/errors/error";
 import { createClient } from "@/lib/supabase/client";
 
 export const CommonService = {

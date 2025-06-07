@@ -1,7 +1,7 @@
 // lib/services/notes/client.ts - 클라이언트 전용
 import { API_BASE_URL } from "@/lib/constants";
 import { Note } from "@/lib/db/schemas";
-import { ApiError, handleApiError, isApiError } from "@/lib/errors/error";
+import { ApiError, handleApiError, isApiError } from "@/lib/api/errors/error";
 import { NotesResponse } from "@/services/notes";
 
 /**

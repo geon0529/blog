@@ -2,7 +2,7 @@
 // 서버 특화 에러 클래스들 (데이터베이스 관련)
 // ================================================================
 
-import { DatabaseError, NotFoundError } from "@/lib/errors/domain-error";
+import { DatabaseError, NotFoundError } from "@/lib/api/errors/domain-error";
 import { NextResponse } from "next/server";
 import z from "zod";
 
