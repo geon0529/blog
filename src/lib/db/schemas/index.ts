@@ -1,2 +1,3 @@
-export * from "./notes";
-export * from "./profiles";
+export * from "./notes/index";
+export * from "./notes/likes";
+export * from "./profiles/index";

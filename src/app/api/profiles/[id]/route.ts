@@ -1,5 +1,4 @@
 // app/api/profiles/[id]/route.ts
-
 import { getProfileById } from "@/lib/db/queries/profiles";
 import {
   ApiError,

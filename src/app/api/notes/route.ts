@@ -9,7 +9,6 @@ import { z } from "zod";
 import { revalidateNotes } from "@/services/notes/revalidate";
 import { withAuth } from "@/lib/api/middlewares/with-auth";
 import { withErrorHandler } from "@/lib/api/middlewares/with-error-handler";
-import { pipe } from "motion";
 import { flow } from "lodash";
 
 /**

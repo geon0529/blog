@@ -1,6 +1,11 @@
 import { DatabaseError, NotFoundError } from "@/lib/api/errors/domain-error";
-import { db } from "../index";
-import { notes, type Note, type CreateNote, type UpdateNote } from "../schemas";
+import { db } from "../../index";
+import {
+  notes,
+  type Note,
+  type CreateNote,
+  type UpdateNote,
+} from "../../schemas";
 import { eq, desc, ilike, or, count, and } from "drizzle-orm";
 /**
  * 모든 노트 조회
