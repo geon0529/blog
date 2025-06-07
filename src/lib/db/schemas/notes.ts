@@ -1,14 +1,28 @@
+import { profiles } from "@/lib/db/schemas/profiles";
+import { relations } from "drizzle-orm";
 import { pgTable, text, uuid, timestamp } from "drizzle-orm/pg-core";
 import { z } from "zod";
 
+// Notes 테이블 (관계 설정을 위해 추가)
 export const notes = pgTable("notes", {
   id: uuid("id").primaryKey().defaultRandom(),
   title: text("title").notNull(),
   content: text("content").notNull(),
-  authorId: uuid("author_id").notNull(),
+  authorId: uuid("author_id")
+    .notNull()
+    .references(() => profiles.id, {
+      onDelete: "cascade", // 프로필 삭제 시 노트도 삭제
+    }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
+
+export const notesRelations = relations(notes, ({ one }) => ({
+  author: one(profiles, {
+    fields: [notes.authorId],
+    references: [profiles.id],
+  }),
+}));
 
 export const createNoteSchema = z.object({
   title: z
@@ -58,8 +72,18 @@ export type UpdateNote = z.infer<typeof updateNoteSchema>;
 export type NoteId = z.infer<typeof noteIdSchema>;
 export type NotePermission = z.infer<typeof notePermissionSchema>;
 
-// 📝 사용자 정보가 포함된 노트 타입 (필요시)
-export type NoteWithAuthor = Note & {
-  authorName?: string;
-  authorEmail?: string;
+// Notes 테이블과 Profile 테이블의 관계를 위한 확장된 타입들
+export type NoteWithAuthor = {
+  id: string;
+  title: string;
+  content: string;
+  authorId: string;
+  createdAt: Date;
+  updatedAt: Date;
+  author: {
+    id: string;
+    email: string | null;
+    fullName: string | null;
+    avatarUrl: string | null;
+  } | null;
 };
