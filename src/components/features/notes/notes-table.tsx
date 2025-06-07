@@ -281,7 +281,6 @@ export default function NotesTable({
           </TableCaption>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[8%]">ID</TableHead>
               <TableHead className="w-[12%]">제목</TableHead>
               <TableHead className="w-[20%]">내용 미리보기</TableHead>
               <TableHead className="w-[8%]">상태</TableHead>
@@ -306,9 +305,6 @@ export default function NotesTable({
             ) : (
               noteData.notes.map((note) => (
                 <TableRow key={note.id} className="hover:bg-accent">
-                  <TableCell className="font-mono text-xs text-gray-500">
-                    {note.id.substring(0, 8)}...
-                  </TableCell>
                   <TableCell>
                     <Link
                       href={`/notes/${note.id}`}
