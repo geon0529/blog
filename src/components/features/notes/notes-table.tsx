@@ -19,12 +19,10 @@ import { Badge } from "@/components/ui/badge";
 import { Trash2, Loader2, Search, RefreshCw, Heart } from "lucide-react";
 import CreateNoteDialog from "@/components/features/notes/create-note-dialog";
 import Paginator from "@/components/ui/paginator";
-import { PaginationInfo } from "@/types/common.types";
 import ConfirmDialog from "@/components/dialogs/confirm-dialog";
 import { formatDateConditional } from "@/lib/utils/date";
 import { NotesService } from "@/services/notes/client";
 import { revalidateNotes } from "@/services/notes/revalidate";
-import { equal, orPipe } from "@/lib/utils/function";
 import { NotesResponse } from "@/services/notes";
 import { Note } from "@/lib/db/queries";
 import { useUserInfo } from "@/hooks/useUserInfo";
@@ -42,7 +40,6 @@ export default function NotesTable({
   searchString,
 }: NotesTableProps) {
   const [searchQuery, setSearchQuery] = useState<string>(searchString);
-  const [deleting, setDeleting] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
@@ -71,6 +68,38 @@ export default function NotesTable({
     },
   });
 
+  // 삭제 mutation
+  const deleteMutation = useMutation({
+    mutationFn: (noteId: string) => NotesService.deleteNote(noteId),
+    onSuccess: (data, noteId) => {
+      console.log("삭제 성공:", data);
+      setError(null);
+
+      startTransition(() => {
+        // 마지막 페이지에서 마지막 노트를 삭제하는 경우 이전 페이지로 이동
+        const shouldGoToPreviousPage =
+          noteData.notes.length === 1 && currentPage > 1;
+
+        if (shouldGoToPreviousPage) {
+          const newPage = currentPage - 1;
+          const params = new URLSearchParams(searchParams);
+          params.set("page", newPage.toString());
+          router.push(`/notes?${params.toString()}`);
+        } else {
+          router.refresh();
+        }
+      });
+    },
+    onError: (error, noteId) => {
+      console.error("삭제 실패:", error);
+      if (isApiError(error)) {
+        setError(error.message);
+      } else {
+        setError("삭제에 실패했습니다.");
+      }
+    },
+  });
+
   // 현재 유저가 해당 노트에 좋아요했는지 확인
   const isLikedByCurrentUser = (note: Note): boolean => {
     if (!currentUserId) return false;
@@ -92,32 +121,14 @@ export default function NotesTable({
     likeMutation.mutate(noteId);
   };
 
-  const handleDelete = async (id: string) => {
-    if (deleting) {
-      throw new Error("삭제 중인 노트가 있습니다.");
+  // 삭제 처리
+  const handleDelete = async (noteId: string) => {
+    if (deleteMutation.isPending) {
+      return; // 이미 처리 중
     }
-    setDeleting(id);
-    setError(null);
-    try {
-      await NotesService.deleteNote(id);
-      startTransition(async () => {
-        const shouldGoToPreviousPage =
-          noteData.notes.length === 1 && currentPage > 1;
 
-        if (shouldGoToPreviousPage) {
-          const newPage = currentPage - 1;
-          const params = new URLSearchParams(searchParams);
-          params.set("page", newPage.toString());
-          router.push(`/notes?${params.toString()}`);
-        } else {
-          router.refresh();
-        }
-      });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "삭제에 실패했습니다.");
-    } finally {
-      setDeleting(null);
-    }
+    setError(null);
+    deleteMutation.mutate(noteId);
   };
 
   // 검색 처리 - useTransition 활용
@@ -370,18 +381,20 @@ export default function NotesTable({
                         title={`${note.title} 노트를 정말 삭제하시겠습니까?`}
                         description="이 작업은 되돌릴 수 없습니다. 노트가 영구적으로 삭제되며 서버에서 모든 데이터가 제거됩니다."
                         onConfirm={async () => await handleDelete(note.id)}
-                        loading={orPipe(equal(deleting, note.id), isPending)}
+                        loading={
+                          (deleteMutation.isPending &&
+                            deleteMutation.variables === note.id) ||
+                          isPending
+                        }
                         trigger={
                           <Button
                             variant="outline"
                             size="sm"
-                            disabled={orPipe(
-                              equal(deleting, note.id),
-                              isPending
-                            )}
+                            disabled={deleteMutation.isPending || isPending}
                             className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
                           >
-                            {deleting === note.id ? (
+                            {deleteMutation.isPending &&
+                            deleteMutation.variables === note.id ? (
                               <Loader2 className="h-4 w-4 animate-spin" />
                             ) : (
                               <Trash2 className="h-4 w-4" />
