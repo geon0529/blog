@@ -10,6 +10,7 @@ import { revalidateNotes } from "@/services/notes/revalidate";
 import { withAuth } from "@/lib/api/middlewares/with-auth";
 import { withErrorHandler } from "@/lib/api/middlewares/with-error-handler";
 import { pipe } from "motion";
+import { flow } from "lodash";
 
 /**
  * GET /api/notes - 노트 목록 조회 (페이지네이션, 검색 지원)
@@ -76,9 +77,9 @@ export const GET = withErrorHandler(
  * POST /api/notes - 노트 생성
  * pipe로 에러 처리 + 인증 조합
  */
-export const POST = pipe(
-  withErrorHandler,
-  withAuth
+export const POST = flow(
+  withAuth,
+  withErrorHandler
 )(async (user: any, request: NextRequest): Promise<NextResponse> => {
   const parsedRequest = await request.json();
 

@@ -1,4 +1,3 @@
-import { withErrorHandler } from "@/lib/api/middlewares/with-error-handler";
 import { NextResponse } from "next/server";
 
 /**
@@ -8,7 +7,7 @@ import { NextResponse } from "next/server";
 export function withAuthMiddleware<T extends any[]>(
   handler: (user: any, ...args: T) => Promise<NextResponse>
 ): (...args: T) => Promise<NextResponse> {
-  return withErrorHandler(async (...args: T): Promise<NextResponse> => {
+  return async (...args: T): Promise<NextResponse> => {
     // 동적 import를 사용하여 순환 참조 방지
     const { CommonService } = await import("@/services/common/server");
 
@@ -17,7 +16,7 @@ export function withAuthMiddleware<T extends any[]>(
 
     // user 객체를 첫 번째 파라미터로 주입하여 핸들러 실행
     return handler(user, ...args);
-  });
+  };
 }
 
 /**

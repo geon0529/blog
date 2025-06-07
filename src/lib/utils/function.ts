@@ -19,7 +19,6 @@ export const encodedRedirect = (
 export const cn = (...inputs: ClassValue[]) => {
   return twMerge(clsx(inputs));
 };
-
 /**
  * @description 전달받은 인수들에 대해 AND 연산을 수행
  * 첫 번째 falsy 값을 만나면 해당 값을 반환하고, 모든 값이 truthy면 마지막 값을 반환

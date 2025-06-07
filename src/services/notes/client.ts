@@ -120,6 +120,8 @@ export const NotesService = {
         method: "DELETE",
       });
 
+      console.log("하이킥 response", response);
+
       if (!response.ok) {
         await handleApiError(response);
       }
