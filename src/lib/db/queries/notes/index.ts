@@ -4,11 +4,19 @@ import {
   notes,
   noteLikes,
   profiles, // 유저 정보 가져오기 위해 필요
+  tags,
+  notesToTags,
   type CreateNote,
   type UpdateNote,
 } from "../../schemas";
 import { eq, desc, ilike, or, count, and, inArray } from "drizzle-orm";
 import { sql } from "drizzle-orm";
+
+/* 태그 정보 타입 */
+type TagInfo = {
+  id: string;
+  name: string;
+};
 
 /* 좋아요 정보가 포함된 노트 타입 (기본 타입으로 사용) */
 export type Note = {
@@ -25,6 +33,7 @@ export type Note = {
       email: string;
     }[];
   };
+  tags: TagInfo[]; // 태그 정보 추가
 };
 
 /**
@@ -87,15 +96,63 @@ async function getNotesLikesInfo(noteIds: string[]): Promise<{
 }
 
 /**
- * 원본 노트 배열에 좋아요 정보 추가하는 헬퍼
+ * 노트들의 태그 정보를 가져오는 헬퍼 함수
  */
-async function addLikesToNotes(rawNotes: any[]): Promise<Note[]> {
+async function getNotesTagsInfo(noteIds: string[]): Promise<{
+  [noteId: string]: TagInfo[];
+}> {
+  if (noteIds.length === 0) return {};
+
+  try {
+    const tagsWithNotes = await db
+      .select({
+        noteId: notesToTags.noteId,
+        tagId: tags.id,
+        tagName: tags.name,
+      })
+      .from(notesToTags)
+      .innerJoin(tags, eq(notesToTags.tagId, tags.id))
+      .where(inArray(notesToTags.noteId, noteIds));
+
+    const result: { [noteId: string]: TagInfo[] } = {};
+
+    // 초기화
+    noteIds.forEach((noteId) => {
+      result[noteId] = [];
+    });
+
+    // 데이터 집계
+    tagsWithNotes.forEach((tag) => {
+      if (!result[tag.noteId]) {
+        result[tag.noteId] = [];
+      }
+      result[tag.noteId].push({
+        id: tag.tagId,
+        name: tag.tagName,
+      });
+    });
+
+    return result;
+  } catch (error) {
+    console.error("Error fetching notes tags info:", error);
+    return {};
+  }
+}
+
+/**
+ * 원본 노트 배열에 좋아요와 태그 정보 추가하는 헬퍼
+ */
+async function addMetadataToNotes(rawNotes: any[]): Promise<Note[]> {
   const noteIds = rawNotes.map((note) => note.id);
-  const likesInfo = await getNotesLikesInfo(noteIds);
+  const [likesInfo, tagsInfo] = await Promise.all([
+    getNotesLikesInfo(noteIds),
+    getNotesTagsInfo(noteIds),
+  ]);
 
   return rawNotes.map((note) => ({
     ...note,
     likes: likesInfo[note.id] || { count: 0, users: [] },
+    tags: tagsInfo[note.id] || [],
   }));
 }
 
@@ -109,7 +166,7 @@ export async function getAllNotes(): Promise<Note[]> {
       .from(notes)
       .orderBy(desc(notes.createdAt));
 
-    return await addLikesToNotes(rawNotes);
+    return await addMetadataToNotes(rawNotes);
   } catch (error) {
     console.error("Database error in getAllNotes:", error);
     throw new DatabaseError(
@@ -130,7 +187,7 @@ export async function getNotesByUserId(userId: string): Promise<Note[]> {
       .where(eq(notes.authorId, userId))
       .orderBy(desc(notes.createdAt));
 
-    return await addLikesToNotes(rawNotes);
+    return await addMetadataToNotes(rawNotes);
   } catch (error) {
     console.error("Database error in getNotesByUserId:", error);
     throw new DatabaseError(
@@ -151,8 +208,8 @@ export async function getNoteById(id: string): Promise<Note | undefined> {
       return undefined;
     }
 
-    const notesWithLikes = await addLikesToNotes(result);
-    return notesWithLikes[0];
+    const notesWithMetadata = await addMetadataToNotes(result);
+    return notesWithMetadata[0];
   } catch (error) {
     console.error("Database error in getNoteById:", error);
     throw new DatabaseError(
@@ -167,22 +224,55 @@ export async function getNoteById(id: string): Promise<Note | undefined> {
  */
 export async function createNote(data: CreateNote): Promise<Note> {
   try {
-    const result = await db
-      .insert(notes)
-      .values({
-        title: data.title,
-        content: data.content,
-        authorId: data.authorId,
-      })
-      .returning();
+    return await db.transaction(async (tx) => {
+      // 1. 노트 생성
+      const [note] = await tx
+        .insert(notes)
+        .values({
+          title: data.title,
+          content: data.content,
+          authorId: data.authorId,
+        })
+        .returning();
 
-    if (result.length === 0) {
-      throw new DatabaseError("노트 생성에 실패했습니다.", "createNote");
-    }
+      if (!note) {
+        throw new DatabaseError("노트 생성에 실패했습니다.", "createNote");
+      }
 
-    // 새로 생성된 노트에 좋아요 정보 추가 (빈 상태)
-    const notesWithLikes = await addLikesToNotes(result);
-    return notesWithLikes[0];
+      // 2. 태그 처리
+      if (data.tags && data.tags.length > 0) {
+        // 2-1. 기존 태그 조회 또는 새 태그 생성
+        const tagPromises = data.tags.map(async (tagName) => {
+          const existingTag = await tx.query.tags.findFirst({
+            where: eq(tags.name, tagName),
+          });
+
+          if (existingTag) {
+            return existingTag;
+          }
+
+          const [newTag] = await tx
+            .insert(tags)
+            .values({ name: tagName })
+            .returning();
+          return newTag;
+        });
+
+        const processedTags = await Promise.all(tagPromises);
+
+        // 2-2. 노트와 태그 연결
+        await tx.insert(notesToTags).values(
+          processedTags.map((tag) => ({
+            noteId: note.id,
+            tagId: tag.id,
+          }))
+        );
+      }
+
+      // 3. 생성된 노트에 메타데이터(좋아요, 태그) 추가
+      const notesWithMetadata = await addMetadataToNotes([note]);
+      return notesWithMetadata[0];
+    });
   } catch (error) {
     if (error instanceof DatabaseError) {
       throw error;
@@ -196,26 +286,66 @@ export async function createNote(data: CreateNote): Promise<Note> {
 }
 
 /**
- * 노트 업데이트 (순수 데이터 업데이트만)
+ * 노트 업데이트 (제목, 내용, 태그 업데이트)
  */
 export async function updateNote(id: string, data: UpdateNote): Promise<Note> {
   try {
-    const result = await db
-      .update(notes)
-      .set({
-        ...data,
-        updatedAt: new Date(),
-      })
-      .where(eq(notes.id, id))
-      .returning();
+    return await db.transaction(async (tx) => {
+      // 1. 노트 기본 정보 업데이트
+      const [note] = await tx
+        .update(notes)
+        .set({
+          title: data.title,
+          content: data.content,
+          updatedAt: new Date(),
+        })
+        .where(eq(notes.id, id))
+        .returning();
 
-    if (result.length === 0) {
-      throw new NotFoundError("노트");
-    }
+      if (!note) {
+        throw new NotFoundError("노트");
+      }
 
-    // 업데이트된 노트에 좋아요 정보 추가
-    const notesWithLikes = await addLikesToNotes(result);
-    return notesWithLikes[0];
+      // 2. 태그 업데이트 (태그가 제공된 경우에만)
+      if (data.tags !== undefined) {
+        // 2-1. 기존 태그 연결 삭제
+        await tx.delete(notesToTags).where(eq(notesToTags.noteId, id));
+
+        // 2-2. 새 태그 처리
+        if (data.tags.length > 0) {
+          // 기존 태그 조회 또는 새 태그 생성
+          const tagPromises = data.tags.map(async (tagName) => {
+            const existingTag = await tx.query.tags.findFirst({
+              where: eq(tags.name, tagName),
+            });
+
+            if (existingTag) {
+              return existingTag;
+            }
+
+            const [newTag] = await tx
+              .insert(tags)
+              .values({ name: tagName })
+              .returning();
+            return newTag;
+          });
+
+          const processedTags = await Promise.all(tagPromises);
+
+          // 새 태그 연결 생성
+          await tx.insert(notesToTags).values(
+            processedTags.map((tag) => ({
+              noteId: id,
+              tagId: tag.id,
+            }))
+          );
+        }
+      }
+
+      // 3. 업데이트된 노트에 메타데이터 추가
+      const notesWithMetadata = await addMetadataToNotes([note]);
+      return notesWithMetadata[0];
+    });
   } catch (error) {
     if (error instanceof NotFoundError) {
       throw error;
@@ -279,7 +409,7 @@ export async function searchNotes(
       .where(whereCondition)
       .orderBy(desc(notes.createdAt));
 
-    return await addLikesToNotes(rawNotes);
+    return await addMetadataToNotes(rawNotes);
   } catch (error) {
     console.error("Database error in searchNotes:", error);
     throw new DatabaseError("노트 검색 중 오류가 발생했습니다.", "searchNotes");
@@ -324,11 +454,11 @@ export async function getNotesWithPagination(
       .limit(limit)
       .offset(offset);
 
-    // 3. 좋아요 정보 추가
-    const notesWithLikes = await addLikesToNotes(rawNotes);
+    // 3. 좋아요/태그 정보 추가
+    const notesWithMetadata = await addMetadataToNotes(rawNotes);
 
     return {
-      notes: notesWithLikes,
+      notes: notesWithMetadata,
       pagination: {
         currentPage: page,
         totalPages,
@@ -342,6 +472,46 @@ export async function getNotesWithPagination(
     throw new DatabaseError(
       "노트 목록을 불러오는 중 오류가 발생했습니다.",
       "getNotesWithPagination"
+    );
+  }
+}
+
+/**
+ * 태그로 노트 검색
+ */
+export async function searchNotesByTags(
+  tagNames: string[],
+  userId?: string
+): Promise<Note[]> {
+  try {
+    const tagConditions = tagNames.map((name) => eq(tags.name, name));
+    const whereCondition = userId
+      ? and(eq(notes.authorId, userId), or(...tagConditions))
+      : or(...tagConditions);
+
+    const rawNotes = await db
+      .select({
+        id: notes.id,
+        title: notes.title,
+        content: notes.content,
+        authorId: notes.authorId,
+        createdAt: notes.createdAt,
+        updatedAt: notes.updatedAt,
+      })
+      .from(notes)
+      .innerJoin(notesToTags, eq(notes.id, notesToTags.noteId))
+      .innerJoin(tags, eq(notesToTags.tagId, tags.id))
+      .where(whereCondition)
+      .groupBy(notes.id)
+      .having(sql`count(distinct ${tags.id}) = ${tagNames.length}`)
+      .orderBy(desc(notes.createdAt));
+
+    return await addMetadataToNotes(rawNotes);
+  } catch (error) {
+    console.error("Database error in searchNotesByTags:", error);
+    throw new DatabaseError(
+      "태그로 노트 검색 중 오류가 발생했습니다.",
+      "searchNotesByTags"
     );
   }
 }
@@ -429,7 +599,7 @@ export async function getRecentNotes(
       .orderBy(desc(notes.createdAt))
       .limit(limit);
 
-    return await addLikesToNotes(rawNotes);
+    return await addMetadataToNotes(rawNotes);
   } catch (error) {
     console.error("Database error in getRecentNotes:", error);
     throw new DatabaseError(

@@ -1,4 +1,4 @@
-import NotesTable from "@/components/features/notes/notes-table";
+import NotesList from "@/components/features/notes/notes-list";
 import { NotesService } from "@/services/notes/server";
 
 interface NotesPageProps {
@@ -14,10 +14,11 @@ export default async function NotesPage(props: NotesPageProps) {
   const page = Number(searchParams?.page) || 1;
   const search = searchParams?.search;
   const noteData = await NotesService.fetchNotesWithCache(page, 10, search);
+  console.log("하이킥 noteData", noteData);
   return (
     <div className="w-full max-w-6xl p-6">
-      {/* 노트 테이블 */}
-      <NotesTable noteData={noteData} page={page} searchString={search || ""} />
+      {/* 노트 카드 리스트 */}
+      <NotesList noteData={noteData} />
     </div>
   );
 }

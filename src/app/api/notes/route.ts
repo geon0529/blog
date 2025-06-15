@@ -3,6 +3,7 @@ import {
   getNotesWithPagination,
   createNote,
   searchNotes,
+  searchNotesByTags,
 } from "@/lib/db/queries";
 import { createNoteSchema } from "@/lib/db/schemas";
 import { z } from "zod";
@@ -24,7 +25,8 @@ export const GET = withErrorHandler(
       page: z.number().int().min(1).default(1),
       limit: z.number().int().min(1).max(100).default(10),
       search: z.string().optional(),
-      userId: z.string().optional(), // 특정 사용자 노트만 조회
+      tags: z.string().optional(), // 태그 검색을 위한 파라미터 (쉼표로 구분)
+      userId: z.string().optional(),
     });
 
     const params = paginationSchema.parse({
@@ -33,13 +35,35 @@ export const GET = withErrorHandler(
         ? parseInt(searchParams.get("limit")!)
         : 10,
       search: searchParams.get("search") || undefined,
+      tags: searchParams.get("tags") || undefined,
       userId: searchParams.get("userId") || undefined,
     });
 
     // 도메인 로직 실행
     let result;
 
-    if (params.search) {
+    if (params.tags) {
+      // 태그 검색 모드
+      const tagNames = params.tags.split(",").map((tag) => tag.trim());
+      const searchResults = await searchNotesByTags(tagNames, params.userId);
+
+      // 검색 결과에 수동 페이지네이션 적용
+      const startIndex = (params.page - 1) * params.limit;
+      const endIndex = startIndex + params.limit;
+      const paginatedResults = searchResults.slice(startIndex, endIndex);
+
+      result = {
+        notes: paginatedResults,
+        pagination: {
+          currentPage: params.page,
+          totalPages: Math.ceil(searchResults.length / params.limit),
+          totalCount: searchResults.length,
+          hasNextPage: endIndex < searchResults.length,
+          hasPreviousPage: params.page > 1,
+        },
+        tags: tagNames,
+      };
+    } else if (params.search) {
       // 검색 모드
       const searchResults = await searchNotes(params.search, params.userId);
 

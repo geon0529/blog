@@ -4,6 +4,7 @@ import { ThemeProvider } from "next-themes";
 import LayoutHeader from "@/components/layout/layout-header";
 import AppProvider from "@/app/providers";
 import Universe from "@/components/universe";
+import { Toaster } from "@/components/ui/sonner";
 
 const defaultUrl = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`
@@ -29,12 +30,13 @@ export default function RootLayout({
     <html lang="ko" className={geistSans.className} suppressHydrationWarning>
       <body className="bg-background text-foreground">
         <AppProvider>
-          <main className="min-h-screen flex flex-col items-center">
+          <main className="flex flex-col items-center max-w-3xl min-h-screen px-4 mx-auto sm:px-6 xl:max-w-5xl xl:px-0">
             {/* <Universe /> */}
             <LayoutHeader />
             {children}
           </main>
         </AppProvider>
+        <Toaster />
       </body>
     </html>
   );

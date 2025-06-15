@@ -1,5 +1,5 @@
-import ThemeSwitcher from "@/components/theme-switcher";
-import UserInfo from "@/components/user-info";
+import Logo from "@/components/layout/logo";
+import HeaderMenu from "@/components/layout/header-menu";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function LayoutHeader() {
@@ -9,12 +9,9 @@ export default async function LayoutHeader() {
   } = await supabase.auth.getUser();
 
   return (
-    <div className="w-full h-12 p-4 flex items-center justify-between">
-      <div></div>
-      <div className="flex items-center">
-        <ThemeSwitcher />
-        {user ? <UserInfo user={user} /> : <></>}
-      </div>
+    <div className="flex items-center justify-between w-full h-12 p-4">
+      <Logo />
+      <HeaderMenu />
     </div>
   );
 }

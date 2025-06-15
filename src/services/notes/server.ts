@@ -5,6 +5,7 @@ import {
   getNotesWithPagination,
   getNoteById,
   searchNotes as dbSearchNotes,
+  searchNotesByTags as dbSearchNotesByTags,
 } from "@/lib/db/queries/notes";
 import { Note } from "@/lib/db/schemas";
 import { NotFoundError } from "@/lib/api/errors/domain-error";
@@ -21,12 +22,30 @@ export const service = {
   async fetchNotes(
     page: number = 1,
     limit: number = 10,
-    search?: string
+    search?: string,
+    tags?: string[]
   ): Promise<NotesResponse> {
     try {
       let result;
 
-      if (search && search.trim()) {
+      if (tags && tags.length > 0) {
+        // 태그 검색
+        const notes = await dbSearchNotesByTags(tags);
+        const offset = (page - 1) * limit;
+        const paginatedNotes = notes.slice(offset, offset + limit);
+
+        result = {
+          notes: paginatedNotes,
+          pagination: {
+            currentPage: page,
+            totalPages: Math.ceil(notes.length / limit),
+            totalCount: notes.length,
+            hasNextPage: page * limit < notes.length,
+            hasPreviousPage: page > 1,
+          },
+          tags,
+        };
+      } else if (search && search.trim()) {
         // 검색이 있는 경우 - 페이지네이션 직접 구현
         const notes = await dbSearchNotes(search);
         const offset = (page - 1) * limit;
@@ -81,8 +100,13 @@ export const service = {
  * 별도로 정의하여 unstable_cache가 올바르게 작동하도록 함
  */
 export const fetchNotesWithCache = unstable_cache(
-  async (page: number = 1, limit: number = 10, search?: string) => {
-    return service.fetchNotes(page, limit, search);
+  async (
+    page: number = 1,
+    limit: number = 10,
+    search?: string,
+    tags?: string[]
+  ) => {
+    return service.fetchNotes(page, limit, search, tags);
   },
   [CACHE_KEYS.NOTES],
   {

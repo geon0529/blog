@@ -1,5 +1,6 @@
 import { noteLikes } from "@/lib/db/schemas";
 import { profiles } from "@/lib/db/schemas/profiles";
+import { notesToTags, tags } from "@/lib/db/schemas/tags";
 import { relations } from "drizzle-orm";
 import { pgTable, text, uuid, timestamp } from "drizzle-orm/pg-core";
 import { z } from "zod";
@@ -18,13 +19,14 @@ export const notes = pgTable("notes", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-// Relations 설정 (좋아요 관계 추가)
+// Relations 설정 (좋아요 관계와 태그 관계 추가)
 export const notesRelations = relations(notes, ({ one, many }) => ({
   author: one(profiles, {
     fields: [notes.authorId],
     references: [profiles.id],
   }),
   likes: many(noteLikes),
+  tags: many(notesToTags),
 }));
 
 // 기존 Zod 스키마들
@@ -40,6 +42,7 @@ export const createNoteSchema = z.object({
     .max(50000, "내용은 50,000자 이하여야 합니다")
     .trim(),
   authorId: z.string().uuid("올바른 사용자 ID 형식이 아닙니다"),
+  tags: z.array(z.string().min(1).max(50)).optional(),
 });
 
 export const updateNoteSchema = z.object({
@@ -55,6 +58,7 @@ export const updateNoteSchema = z.object({
     .max(50000, "내용은 50,000자 이하여야 합니다")
     .trim()
     .optional(),
+  tags: z.array(z.string().min(1).max(50)).optional(),
 });
 
 // ID 검증용 스키마

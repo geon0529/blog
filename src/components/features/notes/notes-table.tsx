@@ -27,6 +27,7 @@ import { NotesResponse } from "@/services/notes";
 import { Note } from "@/lib/db/queries";
 import { useUserInfo } from "@/hooks/useUserInfo";
 import { isApiError } from "@/lib/api/errors/error";
+import parse from "html-react-parser";
 
 interface NotesTableProps {
   noteData: NotesResponse;
@@ -222,7 +223,7 @@ export default function NotesTable({
   return (
     <div className="w-full space-y-6">
       {/* 상단 액션 바 */}
-      <div className="flex justify-between items-center">
+      <div className="flex items-center justify-between">
         <div className="flex gap-2">
           {/* 검색 */}
           <Input
@@ -235,9 +236,9 @@ export default function NotesTable({
           />
           <Button onClick={handleSearch} variant="outline" disabled={isPending}>
             {isPending ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <Loader2 className="w-4 h-4 animate-spin" />
             ) : (
-              <Search className="h-4 w-4" />
+              <Search className="w-4 h-4" />
             )}
           </Button>
         </div>
@@ -260,7 +261,7 @@ export default function NotesTable({
 
       {/* 에러 메시지 */}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+        <div className="p-4 border border-red-200 rounded-lg bg-red-50">
           <p className="text-red-700">{error}</p>
         </div>
       )}
@@ -283,10 +284,11 @@ export default function NotesTable({
             <TableRow>
               <TableHead className="w-[12%]">제목</TableHead>
               <TableHead className="w-[20%]">내용 미리보기</TableHead>
+              <TableHead className="w-[12%]">태그</TableHead>
               <TableHead className="w-[8%]">상태</TableHead>
               <TableHead className="w-[8%]">좋아요</TableHead>
-              <TableHead className="w-[17%]">생성일</TableHead>
-              <TableHead className="w-[17%]">수정일</TableHead>
+              <TableHead className="w-[15%]">생성일</TableHead>
+              <TableHead className="w-[15%]">수정일</TableHead>
               <TableHead className="w-[10%]">액션</TableHead>
             </TableRow>
           </TableHeader>
@@ -295,7 +297,7 @@ export default function NotesTable({
               <TableRow>
                 <TableCell
                   colSpan={8}
-                  className="text-center text-gray-500 py-8"
+                  className="py-8 text-center text-gray-500"
                 >
                   {searchQuery
                     ? "검색 결과가 없습니다."
@@ -314,7 +316,16 @@ export default function NotesTable({
                     </Link>
                   </TableCell>
                   <TableCell className="text-gray-600">
-                    {truncateContent(note.content)}
+                    <div className="line-clamp-2">{parse(note.content)}</div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex flex-wrap gap-1">
+                      {note.tags.map((tag) => (
+                        <Badge key={tag.id} variant="secondary">
+                          {tag.name}
+                        </Badge>
+                      ))}
+                    </div>
                   </TableCell>
                   <TableCell>{getNoteBadge(note)}</TableCell>
                   <TableCell>
@@ -362,7 +373,7 @@ export default function NotesTable({
                       >
                         {likeMutation.isPending &&
                         likeMutation.variables === note.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
+                          <Loader2 className="w-4 h-4 animate-spin" />
                         ) : (
                           <Heart
                             className={`h-4 w-4 ${
@@ -387,13 +398,13 @@ export default function NotesTable({
                             variant="outline"
                             size="sm"
                             disabled={deleteMutation.isPending || isPending}
-                            className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                            className="w-8 h-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
                           >
                             {deleteMutation.isPending &&
                             deleteMutation.variables === note.id ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
+                              <Loader2 className="w-4 h-4 animate-spin" />
                             ) : (
-                              <Trash2 className="h-4 w-4" />
+                              <Trash2 className="w-4 h-4" />
                             )}
                           </Button>
                         }

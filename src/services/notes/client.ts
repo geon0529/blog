@@ -50,14 +50,18 @@ export const NotesService = {
   /**
    * 노트 생성 (클라이언트용)
    */
-  async createNote(title: string, content: string): Promise<Note> {
+  async createNote(
+    title: string,
+    content: string,
+    tags?: string[]
+  ): Promise<Note> {
     try {
       const response = await fetch(`${API_BASE_URL}/api/notes`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ title, content }),
+        body: JSON.stringify({ title, content, tags }),
       });
 
       if (!response.ok) {

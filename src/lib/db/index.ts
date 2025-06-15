@@ -8,6 +8,7 @@ const client = postgres(connectionString, {
   prepare: false,
   connection: {
     search_path: "public",
+    timezone: "Asia/Seoul",
   },
 });
 export const db = drizzle(client, { schema });
