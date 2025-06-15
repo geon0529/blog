@@ -2,6 +2,7 @@ import React from "react";
 import { Badge } from "@/components/ui/badge";
 import { Note } from "@/lib/db/queries/notes";
 import parse from "html-react-parser";
+import { formatDateKorean } from "@/lib/utils/date";
 
 interface NoteCardProps {
   note: Note;
@@ -12,11 +13,7 @@ export default function NoteCard({ note }: NoteCardProps) {
     <div className="bg-card border border-border rounded-xl p-6 shadow-sm flex flex-col gap-2 hover:shadow-md transition-shadow">
       {/* 날짜 */}
       <span className="text-xs text-muted-foreground mb-1">
-        {new Date(note.createdAt).toLocaleDateString("en-US", {
-          year: "numeric",
-          month: "long",
-          day: "numeric",
-        })}
+        {formatDateKorean(note.createdAt)}
       </span>
       {/* 제목 */}
       <h3 className="text-xl font-extrabold leading-tight mb-2 text-white">
