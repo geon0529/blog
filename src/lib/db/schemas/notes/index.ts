@@ -37,7 +37,7 @@ export const createNoteSchema = z.object({
   content: z
     .string()
     .min(1, "내용은 필수입니다")
-    .max(10000, "내용은 10,000자 이하여야 합니다")
+    .max(50000, "내용은 50,000자 이하여야 합니다")
     .trim(),
   authorId: z.string().uuid("올바른 사용자 ID 형식이 아닙니다"),
 });
@@ -52,7 +52,7 @@ export const updateNoteSchema = z.object({
   content: z
     .string()
     .min(1, "내용은 필수입니다")
-    .max(10000, "내용은 10,000자 이하여야 합니다")
+    .max(50000, "내용은 50,000자 이하여야 합니다")
     .trim()
     .optional(),
 });

@@ -14,7 +14,6 @@ export default async function NotesPage(props: NotesPageProps) {
   const page = Number(searchParams?.page) || 1;
   const search = searchParams?.search;
   const noteData = await NotesService.fetchNotesWithCache(page, 10, search);
-
   return (
     <div className="w-full max-w-6xl p-6">
       {/* 노트 테이블 */}

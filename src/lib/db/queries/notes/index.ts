@@ -8,6 +8,7 @@ import {
   type UpdateNote,
 } from "../../schemas";
 import { eq, desc, ilike, or, count, and, inArray } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 
 /* 좋아요 정보가 포함된 노트 타입 (기본 타입으로 사용) */
 export type Note = {
@@ -303,27 +304,27 @@ export async function getNotesWithPagination(
   };
 }> {
   try {
+    // 1. 전체 노트 개수 조회
+    const whereCondition = userId ? eq(notes.authorId, userId) : undefined;
+    const totalCountResult = await db
+      .select({ count: count() })
+      .from(notes)
+      .where(whereCondition);
+
+    const totalCount = totalCountResult[0].count as number;
+    const totalPages = Math.ceil(totalCount / limit);
     const offset = (page - 1) * limit;
 
-    // WHERE 조건 구성
-    const whereCondition = userId ? eq(notes.authorId, userId) : undefined;
+    // 2. 페이지네이션된 노트 조회
+    const rawNotes = await db
+      .select()
+      .from(notes)
+      .where(whereCondition)
+      .orderBy(desc(notes.createdAt))
+      .limit(limit)
+      .offset(offset);
 
-    // 노트와 총 개수를 병렬로 조회
-    const [rawNotes, totalResult] = await Promise.all([
-      db
-        .select()
-        .from(notes)
-        .where(whereCondition)
-        .orderBy(desc(notes.createdAt))
-        .limit(limit)
-        .offset(offset),
-      db.select({ count: count() }).from(notes).where(whereCondition),
-    ]);
-
-    const totalCount = totalResult[0].count as number;
-    const totalPages = Math.ceil(totalCount / limit);
-
-    // 좋아요 정보 추가
+    // 3. 좋아요 정보 추가
     const notesWithLikes = await addLikesToNotes(rawNotes);
 
     return {
