@@ -2,7 +2,7 @@ import { noteLikes } from "@/lib/db/schemas";
 import { profiles } from "@/lib/db/schemas/profiles";
 import { notesToTags, tags } from "@/lib/db/schemas/tags";
 import { relations } from "drizzle-orm";
-import { pgTable, text, uuid, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, uuid, timestamp, integer } from "drizzle-orm/pg-core";
 import { z } from "zod";
 
 // Notes 테이블
@@ -15,6 +15,7 @@ export const notes = pgTable("notes", {
     .references(() => profiles.id, {
       onDelete: "cascade", // 프로필 삭제 시 노트도 삭제
     }),
+  viewCount: integer("view_count").default(0).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -72,6 +73,11 @@ export const notePermissionSchema = z.object({
   userId: z.string().uuid("올바른 사용자 ID 형식이 아닙니다"),
 });
 
+// 조회수 증가용 스키마
+export const incrementViewCountSchema = z.object({
+  id: z.string().uuid("올바른 UUID 형식이 아닙니다"),
+});
+
 // 기본 타입들
 export type Note = typeof notes.$inferSelect;
 export type NewNote = typeof notes.$inferInsert;
@@ -79,3 +85,4 @@ export type CreateNote = z.infer<typeof createNoteSchema>;
 export type UpdateNote = z.infer<typeof updateNoteSchema>;
 export type NoteId = z.infer<typeof noteIdSchema>;
 export type NotePermission = z.infer<typeof notePermissionSchema>;
+export type IncrementViewCount = z.infer<typeof incrementViewCountSchema>;

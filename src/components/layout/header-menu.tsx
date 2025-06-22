@@ -1,14 +1,8 @@
 import ThemeSwitcher from "@/components/theme-switcher";
 import UserInfo from "@/components/user-info";
-import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 
 export default async function HeaderMenu() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
   return (
     <div className="flex items-center gap-4">
       <nav className="flex items-center gap-4">
@@ -33,7 +27,7 @@ export default async function HeaderMenu() {
       </nav>
       <div>
         <ThemeSwitcher />
-        {user ? <UserInfo user={user} /> : <></>}
+        <UserInfo />
       </div>
     </div>
   );

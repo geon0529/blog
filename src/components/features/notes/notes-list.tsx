@@ -35,16 +35,9 @@ export default function NotesList({ noteData }: NotesListProps) {
   const likeMutation = useMutation({
     mutationFn: (noteId: string) => NotesService.toggleNoteLike(noteId),
     onSuccess: (data, noteId) => {
-      console.log("좋아요 성공:", data);
       setError(null);
-      // 성공 시에는 서버에서 최신 데이터를 가져와서 동기화
-      startTransition(() => {
-        router.refresh();
-      });
     },
     onError: (error, noteId) => {
-      console.error("좋아요 실패:", error);
-
       // 실패 시 낙관적 업데이트를 롤백
       setLocalNotes((prevNotes) =>
         prevNotes.map((note) => {
@@ -124,8 +117,6 @@ export default function NotesList({ noteData }: NotesListProps) {
         return note;
       })
     );
-
-    // 백그라운드에서 서버 요청
     likeMutation.mutate(noteId);
   };
 

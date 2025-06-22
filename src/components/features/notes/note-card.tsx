@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Note } from "@/lib/db/queries/notes";
 import parse from "html-react-parser";
 import { formatDateKorean } from "@/lib/utils/date";
+import Link from "next/link";
 
 interface NoteCardProps {
   note: Note;
@@ -16,9 +17,11 @@ export default function NoteCard({ note }: NoteCardProps) {
         {formatDateKorean(note.createdAt)}
       </span>
       {/* 제목 */}
-      <h3 className="text-xl font-extrabold leading-tight mb-2 text-white">
-        {note.title}
-      </h3>
+      <Link href={`/blog/${note.id}`}>
+        <h3 className="text-xl font-extrabold leading-tight mb-2 text-white hover:text-primary transition-colors cursor-pointer">
+          {note.title}
+        </h3>
+      </Link>
       {/* 태그 */}
       <div className="flex flex-wrap gap-2 mb-2">
         {note.tags.map((tag) => (

@@ -24,6 +24,7 @@ export type Note = {
   title: string;
   content: string;
   authorId: string;
+  viewCount: number;
   createdAt: Date;
   updatedAt: Date;
   likes: {
@@ -198,9 +199,11 @@ export async function getNotesByUserId(userId: string): Promise<Note[]> {
 }
 
 /**
- * ID로 노트 조회
+ * ID로 노트 조회 (조회수 증가 없이)
  */
-export async function getNoteById(id: string): Promise<Note | undefined> {
+export async function getNoteByIdReadOnly(
+  id: string
+): Promise<Note | undefined> {
   try {
     const result = await db.select().from(notes).where(eq(notes.id, id));
 
@@ -208,8 +211,63 @@ export async function getNoteById(id: string): Promise<Note | undefined> {
       return undefined;
     }
 
+    // 메타데이터 추가하여 반환
     const notesWithMetadata = await addMetadataToNotes(result);
     return notesWithMetadata[0];
+  } catch (error) {
+    console.error("Database error in getNoteByIdReadOnly:", error);
+    throw new DatabaseError(
+      "노트를 불러오는 중 오류가 발생했습니다.",
+      "getNoteByIdReadOnly"
+    );
+  }
+}
+
+/**
+ * 노트 조회수 증가
+ */
+export async function incrementNoteViewCount(id: string): Promise<void> {
+  try {
+    await db
+      .update(notes)
+      .set({
+        viewCount: sql`${notes.viewCount} + 1`,
+      })
+      .where(eq(notes.id, id));
+  } catch (error) {
+    console.error("Database error in incrementNoteViewCount:", error);
+    throw new DatabaseError(
+      "조회수 업데이트 중 오류가 발생했습니다.",
+      "incrementNoteViewCount"
+    );
+  }
+}
+
+/**
+ * ID로 노트 조회 (기존 함수 - 하위 호환성 유지)
+ */
+export async function getNoteById(id: string): Promise<Note | undefined> {
+  try {
+    return await db.transaction(async (tx) => {
+      // 1. 노트 조회
+      const result = await tx.select().from(notes).where(eq(notes.id, id));
+
+      if (result.length === 0) {
+        return undefined;
+      }
+
+      // 2. 조회수 증가
+      await tx
+        .update(notes)
+        .set({
+          viewCount: sql`${notes.viewCount} + 1`,
+        })
+        .where(eq(notes.id, id));
+
+      // 3. 메타데이터 추가하여 반환
+      const notesWithMetadata = await addMetadataToNotes(result);
+      return notesWithMetadata[0];
+    });
   } catch (error) {
     console.error("Database error in getNoteById:", error);
     throw new DatabaseError(

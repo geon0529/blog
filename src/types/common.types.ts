@@ -12,4 +12,5 @@ export interface PaginationInfo {
 export enum CACHE_KEYS {
   NOTE = "NOTE",
   NOTES = "NOTES",
+  PROFILE = "PROFILE",
 }

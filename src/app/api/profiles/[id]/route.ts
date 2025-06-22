@@ -3,34 +3,29 @@ import { NextRequest, NextResponse } from "next/server";
 import { getProfileById } from "@/lib/db/queries/profiles";
 import { profileIdSchema } from "@/lib/db/schemas/profiles";
 import { withErrorHandler } from "@/lib/api/middlewares/with-error-handler";
+import { ApiError } from "@/lib/api/errors/error";
 
 /**
- * GET /api/profile/[userId] - 특정 유저의 프로필 조회
+ * GET /api/profile/[id] - 특정 유저의 프로필 조회
  */
 export const GET = withErrorHandler(
   async (
     request: NextRequest,
-    { params }: { params: { userId: string } }
+    { params }: { params: Promise<{ id: string }> }
   ): Promise<NextResponse> => {
+    const resolvedParams = await params;
+    console.log("하이킥 resolvedParams", resolvedParams);
+
     // 파라미터 검증
-    const { id: userId } = profileIdSchema.parse({ id: params.userId });
+    const { id: userId } = profileIdSchema.parse({ id: resolvedParams.id });
 
     // 프로필 조회
     const profile = await getProfileById(userId);
 
     if (!profile) {
-      return NextResponse.json(
-        {
-          error: "프로필을 찾을 수 없습니다.",
-          message: "존재하지 않는 사용자입니다.",
-        },
-        { status: 404 }
-      );
+      throw new ApiError("프로필을 찾을 수 없습니다.", 404, "NOT_FOUND");
     }
 
-    return NextResponse.json({
-      profile,
-      message: "프로필을 성공적으로 조회했습니다.",
-    });
+    return NextResponse.json(profile);
   }
 );

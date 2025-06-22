@@ -166,6 +166,26 @@ export const NotesService = {
   },
 
   /**
+   * 노트 조회수 증가
+   */
+  async incrementViewCount(id: string): Promise<void> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/notes/${id}/view`);
+
+      if (!response.ok) {
+        await handleApiError(response);
+      }
+
+      return await response.json();
+    } catch (error) {
+      if (isApiError(error)) {
+        throw error;
+      }
+      throw new ApiError("조회수 증가에 실패했습니다.", 500, "INTERNAL_ERROR");
+    }
+  },
+
+  /**
    * 검색 전용 함수 (클라이언트용)
    */
   async searchNotes(

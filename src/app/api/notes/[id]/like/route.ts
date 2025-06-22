@@ -25,12 +25,13 @@ const paramsSchema = z.object({
 export const GET = withErrorHandler(
   async (
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
   ): Promise<NextResponse> => {
     const { searchParams } = new URL(request.url);
+    const resolvedParams = await params;
 
     // 파라미터 검증
-    const { id: noteId } = paramsSchema.parse(params);
+    const { id: noteId } = paramsSchema.parse(resolvedParams);
 
     // 쿼리 파라미터 검증
     const querySchema = z.object({

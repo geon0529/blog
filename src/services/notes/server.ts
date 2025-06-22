@@ -6,8 +6,10 @@ import {
   getNoteById,
   searchNotes as dbSearchNotes,
   searchNotesByTags as dbSearchNotesByTags,
+  getNoteByIdReadOnly,
+  incrementNoteViewCount,
+  Note,
 } from "@/lib/db/queries/notes";
-import { Note } from "@/lib/db/schemas";
 import { NotFoundError } from "@/lib/api/errors/domain-error";
 import { CACHE_KEYS } from "@/types/common.types";
 import { CACHE_TAGS, NotesResponse } from "@/services/notes";
@@ -80,18 +82,45 @@ export const service = {
   },
 
   /**
-   * id 기반 특정 노트 조회 (서버용)
+   * id 기반 특정 노트 조회 (서버용) - 캐시 적용
    */
   async fetchNote(id: string): Promise<Note> {
-    try {
-      const note = await getNoteById(id);
-      if (!note) {
-        throw new NotFoundError("노트");
+    return unstable_cache(
+      async (noteId: string) => {
+        try {
+          const note = await getNoteByIdReadOnly(noteId);
+          if (!note) {
+            throw new NotFoundError("노트");
+          }
+          return note;
+        } catch (error) {
+          throw error;
+        }
+      },
+      [`${CACHE_KEYS.NOTE}-${id}`],
+      {
+        tags: [CACHE_TAGS.NOTES, `${CACHE_TAGS.NOTE_DETAIL}-${id}`],
+        revalidate: 300, // 5분
       }
-      return note;
+    )(id);
+  },
+
+  /**
+   * 노트 조회수 증가
+   */
+  async incrementViewCount(id: string): Promise<void> {
+    try {
+      await incrementNoteViewCount(id);
     } catch (error) {
       throw error;
     }
+  },
+
+  /**
+   * ID로 노트 개별 조회 (서버용)
+   */
+  async getNoteById(id: string): Promise<Note> {
+    return this.fetchNote(id);
   },
 } as const;
 
@@ -108,7 +137,7 @@ export const fetchNotesWithCache = unstable_cache(
   ) => {
     return service.fetchNotes(page, limit, search, tags);
   },
-  [CACHE_KEYS.NOTES],
+  [],
   {
     tags: [CACHE_TAGS.NOTES],
     revalidate: 300, // 5분
