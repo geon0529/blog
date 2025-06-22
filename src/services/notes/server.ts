@@ -30,6 +30,7 @@ export const service = {
           if (!note) {
             throw new NotFoundError("노트");
           }
+          await incrementNoteViewCount(noteId);
           return note;
         } catch (error) {
           throw error;
@@ -41,6 +42,14 @@ export const service = {
         revalidate: 300, // 5분
       }
     )(id);
+  },
+
+  async incrementViewCount(id: string): Promise<void> {
+    try {
+      await incrementNoteViewCount(id);
+    } catch (error) {
+      throw error;
+    }
   },
 } as const;
 
