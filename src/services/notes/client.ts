@@ -69,12 +69,12 @@ export const NotesService = {
         await handleApiError(response);
       }
       const newNote = await response.json();
-      revalidateNotes();
+      await revalidateNotes();
       return newNote;
     } catch (error) {
       console.log("Debug - ", error);
       if (isApiError(error)) {
-        throw error;
+        throw error;` `
       }
       throw new ApiError(
         "노트를 생성하는데 실패했습니다.",
