@@ -19,7 +19,7 @@ import {
 import { Note } from "@/lib/db/queries/notes";
 import { formatDateConditional } from "@/lib/utils/date";
 import { NotesService } from "@/services/notes/client";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Pencil, Trash2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -34,6 +34,7 @@ export default function NoteDetailHeader({
 }: NoteDetailHeaderProps) {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   // 날짜 문자열을 Date 객체로 변환
   const createdAt = new Date(note.createdAt);
@@ -46,6 +47,7 @@ export default function NoteDetailHeader({
     onSuccess: async (data) => {
       // 성공 응답 확인
       if (data.success) {
+        queryClient.invalidateQueries({ queryKey: ["notes"] });
         toast.success("노트가 삭제되었습니다.");
         setIsDeleteDialogOpen(false);
         router.push("/blog");

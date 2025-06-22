@@ -13,75 +13,12 @@ import {
 } from "@/lib/db/queries/notes";
 import { NotFoundError } from "@/lib/api/errors/domain-error";
 import { CACHE_KEYS } from "@/types/common.types";
-import { CACHE_TAGS, NotesResponse } from "@/services/notes";
+import { CACHE_TAGS } from "@/services/notes";
 
 /**
  * 서버 컴포넌트용 데이터베이스 직접 접근 서비스
  */
 export const service = {
-  /**
-   * note 전체 조회 (서버용)
-   */
-  async fetchNotes(
-    page: number = 1,
-    limit: number = 10,
-    search?: string,
-    tags?: string[]
-  ): Promise<NotesResponse> {
-    try {
-      let result;
-
-      if (tags && tags.length > 0) {
-        // 태그 검색
-        const notes = await dbSearchNotesByTags(tags);
-        const offset = (page - 1) * limit;
-        const paginatedNotes = notes.slice(offset, offset + limit);
-
-        result = {
-          notes: paginatedNotes,
-          pagination: {
-            currentPage: page,
-            totalPages: Math.ceil(notes.length / limit),
-            totalCount: notes.length,
-            hasNextPage: page * limit < notes.length,
-            hasPreviousPage: page > 1,
-          },
-          tags,
-        };
-      } else if (search && search.trim()) {
-        // 검색이 있는 경우 - 페이지네이션 직접 구현
-        const notes = await dbSearchNotes(search);
-        const offset = (page - 1) * limit;
-        const paginatedNotes = notes.slice(offset, offset + limit);
-
-        result = {
-          notes: paginatedNotes,
-          pagination: {
-            currentPage: page,
-            totalPages: Math.ceil(notes.length / limit),
-            totalCount: notes.length,
-            hasNextPage: page * limit < notes.length,
-            hasPreviousPage: page > 1,
-          },
-        };
-      } else {
-        // 일반 조회
-        result = await getNotesWithPagination(page, limit);
-        result = {
-          notes: result.notes,
-          pagination: result.pagination,
-        };
-      }
-
-      return {
-        ...result,
-        search,
-      };
-    } catch (error) {
-      throw error;
-    }
-  },
-
   /**
    * id 기반 특정 노트 조회 (서버용) - 캐시 적용
    */
@@ -105,83 +42,9 @@ export const service = {
       }
     )(id);
   },
-
-  /**
-   * 노트 조회수 증가
-   */
-  async incrementViewCount(id: string): Promise<void> {
-    try {
-      await incrementNoteViewCount(id);
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  /**
-   * 노트 삭제 (서버용)
-   */
-  async deleteNote(id: string): Promise<boolean> {
-    try {
-      const deleted = await dbDeleteNote(id);
-
-      if (deleted) {
-        // 캐시 무효화
-        revalidateTag(CACHE_TAGS.NOTES);
-        revalidateTag(`${CACHE_TAGS.NOTE_DETAIL}-${id}`);
-      }
-
-      return deleted;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  /**
-   * ID로 노트 개별 조회 (서버용)
-   */
-  async getNoteById(id: string): Promise<Note> {
-    return this.fetchNote(id);
-  },
 } as const;
-
-/**
- * 캐시된 노트 조회 (서버용)
- * 별도로 정의하여 unstable_cache가 올바르게 작동하도록 함
- */
-export const fetchNotesWithCache = unstable_cache(
-  async (
-    page: number = 1,
-    limit: number = 10,
-    search?: string,
-    tags?: string[]
-  ) => {
-    return service.fetchNotes(page, limit, search, tags);
-  },
-  [],
-  {
-    tags: [CACHE_TAGS.NOTES],
-    revalidate: 300, // 5분
-  }
-);
-
-/**
- * 캐시된 개별 노트 조회 (서버용)
- * 별도로 정의하여 unstable_cache가 올바르게 작동하도록 함
- */
-export const fetchNoteWithCache = unstable_cache(
-  async (id: string) => {
-    return service.fetchNote(id);
-  },
-  [CACHE_KEYS.NOTE],
-  {
-    tags: [CACHE_TAGS.NOTES],
-    revalidate: 300,
-  }
-);
 
 // 캐시된 함수들을 service에 추가하는 확장된 버전
 export const NotesService = {
   ...service,
-  fetchNotesWithCache,
-  fetchNoteWithCache,
 } as const;

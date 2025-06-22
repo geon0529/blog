@@ -1,20 +1,6 @@
 import { notFound } from "next/navigation";
 import { NotesService } from "@/services/notes/server";
 import { ProfilesService } from "@/services/profiles/server";
-import {
-  formatDate,
-  formatDateConditional,
-  formatDateKorean,
-} from "@/lib/utils/date";
-import { Button } from "@/components/ui/button";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { Pencil, Trash2 } from "lucide-react";
-import { toast } from "sonner";
 import NoteDetailHeader from "@/components/features/notes/note-detail-header";
 
 interface NoteDetailPageProps {
@@ -42,11 +28,6 @@ export default async function NoteDetailPage({ params }: NoteDetailPageProps) {
 
     // 1. 조회수 증가 없이 노트 조회 (ISR 캐싱됨)
     const note = await NotesService.fetchNote(id);
-
-    // 2. 조회수 증가를 비동기로 처리 (캐시에 영향 없음)
-    NotesService.incrementViewCount(id).catch((err) =>
-      console.error("조회수 업데이트 실패:", err)
-    );
 
     // 날짜 문자열을 Date 객체로 변환
     const createdAt = new Date(note.createdAt);
