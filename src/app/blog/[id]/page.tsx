@@ -6,6 +6,16 @@ import {
   formatDateConditional,
   formatDateKorean,
 } from "@/lib/utils/date";
+import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Pencil, Trash2 } from "lucide-react";
+import { toast } from "sonner";
+import NoteDetailHeader from "@/components/features/notes/note-detail-header";
 
 interface NoteDetailPageProps {
   params: Promise<{
@@ -44,9 +54,14 @@ export default async function NoteDetailPage({ params }: NoteDetailPageProps) {
 
     // 작성자 프로필 정보 가져오기
     let authorEmail = note.authorId;
+
+    // 현재 로그인한 유저가 노트의 소유자인지 확인
+    let isOwner: boolean = false;
+
     try {
       const profile = await ProfilesService.getProfileById(note.authorId);
       authorEmail = profile.email || note.authorId;
+      isOwner = profile.id === profile?.id;
     } catch (profileError) {
       // 프로필 조회 실패 시 authorId를 그대로 사용
     }
@@ -55,28 +70,7 @@ export default async function NoteDetailPage({ params }: NoteDetailPageProps) {
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         <article className="prose prose-lg max-w-none">
           {/* 헤더 섹션 */}
-          <header className="mb-8">
-            <h1 className="text-4xl font-bold text-gray-900 dark:text-gray-100 mb-4">
-              {note.title}
-            </h1>
-
-            <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400 mb-6">
-              <time dateTime={createdAt.toISOString()}>
-                작성일: {formatDateConditional(createdAt)}
-              </time>
-              {updatedAt && updatedAt.getTime() !== createdAt.getTime() && (
-                <time dateTime={updatedAt.toISOString()}>
-                  수정일: {formatDateConditional(updatedAt)}
-                </time>
-              )}
-            </div>
-
-            {/* 조회수 표시 - 현재 조회 반영 */}
-            <div className="text-sm text-gray-600 dark:text-gray-400 mb-6">
-              조회수: {note.viewCount + 1}
-            </div>
-          </header>
-
+          <NoteDetailHeader note={note} isOwner={isOwner} />
           {/* 본문 내용 */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
             {note.content ? (

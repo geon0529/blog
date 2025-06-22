@@ -13,6 +13,7 @@ import { revalidateNotes } from "@/services/notes/revalidate";
 import { withErrorHandler } from "@/lib/api/middlewares/with-error-handler";
 import { withAuth } from "@/lib/api/middlewares/with-auth";
 import { flow } from "lodash";
+import { NotesService } from "@/services/notes/server";
 /**
  * 노트 ID 검증 헬퍼
  */

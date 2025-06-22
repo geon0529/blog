@@ -417,7 +417,7 @@ export async function updateNote(id: string, data: UpdateNote): Promise<Note> {
 }
 
 /**
- * 노트 삭제 (순수 데이터 삭제만)
+ * 노트 삭제
  */
 export async function deleteNote(id: string): Promise<boolean> {
   try {

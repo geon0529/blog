@@ -3,6 +3,7 @@ import { API_BASE_URL } from "@/lib/constants";
 import { Note } from "@/lib/db/schemas";
 import { ApiError, handleApiError, isApiError } from "@/lib/api/errors/error";
 import { NotesResponse } from "@/services/notes";
+import { revalidateNotes } from "@/services/notes/revalidate";
 
 /**
  * 클라이언트 컴포넌트용 API 호출 서비스
@@ -68,6 +69,7 @@ export const NotesService = {
         await handleApiError(response);
       }
       const newNote = await response.json();
+      revalidateNotes();
       return newNote;
     } catch (error) {
       console.log("Debug - ", error);

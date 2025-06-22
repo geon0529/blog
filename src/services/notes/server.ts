@@ -8,6 +8,7 @@ import {
   searchNotesByTags as dbSearchNotesByTags,
   getNoteByIdReadOnly,
   incrementNoteViewCount,
+  deleteNote as dbDeleteNote,
   Note,
 } from "@/lib/db/queries/notes";
 import { NotFoundError } from "@/lib/api/errors/domain-error";
@@ -111,6 +112,25 @@ export const service = {
   async incrementViewCount(id: string): Promise<void> {
     try {
       await incrementNoteViewCount(id);
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  /**
+   * 노트 삭제 (서버용)
+   */
+  async deleteNote(id: string): Promise<boolean> {
+    try {
+      const deleted = await dbDeleteNote(id);
+
+      if (deleted) {
+        // 캐시 무효화
+        revalidateTag(CACHE_TAGS.NOTES);
+        revalidateTag(`${CACHE_TAGS.NOTE_DETAIL}-${id}`);
+      }
+
+      return deleted;
     } catch (error) {
       throw error;
     }
